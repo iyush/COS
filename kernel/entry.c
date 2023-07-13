@@ -20,7 +20,7 @@ void output_to_console(char * str, int size) {
 
 #define BUF_MAX 256
 
-static int str_from_int(int val, int base, char* buffer, int buffer_offset) {
+static int str_from_uint(unsigned int val, unsigned int base, char* buffer, int buffer_offset) {
     char sec_buffer[BUF_MAX] = {0};
     int j = BUF_MAX - 2;
     for (; val && j; --j, val /= base) {
@@ -49,7 +49,7 @@ int kvsprintf(char* buffer, int buffer_size, char * f_str, va_list args) {
             switch (f_str[i+1]) {
                 case 'c':
                     {
-                        char to_put = va_arg(args, int);
+                        char to_put = (char)va_arg(args, int);
 
                         buffer[curr_str_idx] = to_put;
                         curr_str_idx++;
@@ -81,7 +81,7 @@ int kvsprintf(char* buffer, int buffer_size, char * f_str, va_list args) {
                             curr_str_idx++;
                             val *= -1;
                         }
-                        curr_str_idx = str_from_int(val, 16, buffer, curr_str_idx);
+                        curr_str_idx = str_from_uint((unsigned int) val, 16, buffer, curr_str_idx);
                         i++;
                         break;
                     }
@@ -95,7 +95,7 @@ int kvsprintf(char* buffer, int buffer_size, char * f_str, va_list args) {
                             val *= -1;
                         }
 
-                        curr_str_idx = str_from_int(val, 10, buffer, curr_str_idx);
+                        curr_str_idx = str_from_uint((unsigned int) val, 10, buffer, curr_str_idx);
                         
                         i++;
                         break;
@@ -140,7 +140,6 @@ void __assert_fail(const char * assertion, const char * file, unsigned int line,
                 
 
 void c_start() {
-    char *myString = "Hello world";
     char myBah [3] = "hel";
 
     ksp("Static array: %s\n", myBah);
@@ -149,8 +148,7 @@ void c_start() {
     ksp("This should be digit 123123123: %d\n", 123123123);
     ksp("This should be digit 0x%x\n", 0xdeadbeef);
 
-    int value = 0xfffffffe;
-    ksp("This should be overflowed digit: %d\n", value );
+    ksp("This should be overflowed digit: %d\n", 0xfffffffe);
 
     ksp("This is a msg: %s", "Hello World\n");
     ksp("This should just print percentage: % \n", "");

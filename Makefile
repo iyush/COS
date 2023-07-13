@@ -1,4 +1,6 @@
 default: build
+
+FLAGS=-Werror -Wall -Wconversion -Wextra
         
 build: build/kernel.bin
 
@@ -13,7 +15,7 @@ build/boot.o: asm/boot.asm
 	nasm -f elf64 asm/boot.asm -o build/boot.o
 
 build/kernel_entry.o: kernel/entry.c
-	gcc -nostdlib -c kernel/entry.c -o build/kernel_entry.o -g
+	gcc -nostdlib ${FLAGS} -c kernel/entry.c -o build/kernel_entry.o -g 
 
 build/kernel.bin: build/multiboot_header.o build/boot.o build/kernel_entry.o asm/linker.ld
 	ld -n -o build/kernel.bin -T asm/linker.ld build/multiboot_header.o build/boot.o build/kernel_entry.o
