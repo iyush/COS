@@ -25,8 +25,8 @@ void c_start() {
     //ksp("%");
 
 
-    for (int i = 0; i < 20; i++) {
-        kprint("Hello %d \n", i);
+    for (int i = 0; i < 100; i++) {
+        kprint("Hello %d ", i);
     }
 
     //output_to_console(myString, 7);

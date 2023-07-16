@@ -2,20 +2,11 @@
 #define KIO_H
 #include <stdarg.h>
 #include "./kstring.h"
+#include "./stdint.h"
 #include <stdbool.h>
 
 #define VGA_HEIGHT 25
 #define VGA_WIDTH 80
-
-typedef __INT8_TYPE__  int8_t;
-typedef __INT16_TYPE__ int16_t;
-typedef __INT32_TYPE__ int32_t;
-typedef __INT64_TYPE__ int64_t;
-
-typedef __UINT8_TYPE__  uint8_t;
-typedef __UINT16_TYPE__ uint16_t;
-typedef __UINT32_TYPE__ uint32_t;
-typedef __UINT64_TYPE__ uint64_t;
 
 static void output_to_console(char * str, int size) {
   asm volatile(
@@ -42,6 +33,9 @@ void ksp(char * f_str, ...) {
     va_end(args);
 }
 
+static bool is_vga_init = false;
+static uint8_t vga_pos_x = 0;
+static uint8_t vga_pos_y = 0;
 
 enum VGAColor: uint8_t {
     VGABlack        = 0,
@@ -62,40 +56,55 @@ enum VGAColor: uint8_t {
     VGAWhite        = 15,
 };
 
-void output_to_vga(char ch, int pos_x, int pos_y, enum VGAColor foreground, enum VGAColor background) {
-
+static void output_to_vga(char ch, int pos_x, int pos_y, enum VGAColor foreground, enum VGAColor background) {
     uint8_t attrib  = (foreground & 0x0f) | (background << 4);
-
     uint16_t * video = (uint16_t *)0xb8000 + VGA_WIDTH * pos_y + pos_x;
     *video = (uint16_t)ch | (attrib << 8);
 }
 
-static bool is_vga_init = false;
-static uint8_t vga_pos_x = 0;
-static uint8_t vga_pos_y = 0;
 
-static void vga_init() {
+static void output_to_vga_full(uint16_t vga_val, int pos_x, int pos_y) {
+    uint16_t * video = (uint16_t *)0xb8000 + VGA_WIDTH * pos_y + pos_x;
+    *video = vga_val;
+}
+
+static uint16_t * get_vga_val(int row_index, int col_index) {
+    uint16_t * mem = (uint16_t*)0xb8000 + VGA_WIDTH * row_index + col_index;
+    return mem;
+}
+
+static void scroll_up_by_1() {
+    // move stuff up by 1
+    // TODO: better to do this with memcopy when that is implemented
+    for (int row = 0; row < VGA_HEIGHT; row++) {
+       for (int col = 0; col < VGA_WIDTH; col++) {
+            output_to_vga_full(*get_vga_val(row + 1, col), col, row);
+       }
+    }
+
+    // clear the last row
+    for (int col = 0; col < VGA_WIDTH; col++) {
+        output_to_vga(' ', col, VGA_HEIGHT - 1, VGABlack, VGABlack);
+    }
+}
+
+void vga_clear() {
     for (int row = 0; row < VGA_HEIGHT; row++)
         for (int col = 0; col < VGA_WIDTH; col++)
             output_to_vga(' ', col, row, VGABlack, VGABlack);
 
-    is_vga_init = true;
-}
-
-
-static void scroll_up_by_1() {
-    
 }
 
 void kprint(char * fmt, ...) {
     if (!is_vga_init) {
-        ksp("vga init is called");
-        vga_init();
+        vga_clear();
+        is_vga_init = true;
     }
 
     va_list args;
     va_start(args, fmt);
 
+    // TODO: could overflow! do dynamic mem alloc here?
     char buffer[BUF_MAX];
     
     int size = kvsprintf(buffer, BUF_MAX, fmt, args);
@@ -109,18 +118,18 @@ void kprint(char * fmt, ...) {
             continue;
         }
 
-        output_to_vga(buffer[i], vga_pos_x, vga_pos_y, VGAWhite, VGABlack);
+        if (vga_pos_y >= VGA_HEIGHT) {
+            scroll_up_by_1();
+            vga_pos_y = VGA_HEIGHT - 1;
+        }
 
-        vga_pos_x += 1;
         if (vga_pos_x >= VGA_WIDTH) {
             vga_pos_x = 0;
             vga_pos_y += 1;
         }
 
-        if (vga_pos_y >= VGA_HEIGHT) {
-            scroll_up_by_1();
-        }
-
+        output_to_vga(buffer[i], vga_pos_x, vga_pos_y, VGAWhite, VGABlack);
+        vga_pos_x += 1;
         i++;
     }
 
