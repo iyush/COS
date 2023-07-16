@@ -14,7 +14,7 @@ build/boot.o: asm/boot.asm
 	mkdir -p build
 	nasm -f elf64 asm/boot.asm -o build/boot.o
 
-build/kernel_entry.o: kernel/entry.c
+build/kernel_entry.o: kernel/*
 	toolchain/build/bin/x86_64-elf-gcc -nostdlib ${FLAGS} -c kernel/entry.c -o build/kernel_entry.o -g 
 
 build/kernel.bin: build/multiboot_header.o build/boot.o build/kernel_entry.o asm/linker.ld

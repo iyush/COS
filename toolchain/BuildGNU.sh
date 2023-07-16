@@ -37,8 +37,7 @@ tar xvf $BINUTILS_FILE_PATH -C $SRCDIR
 tar xvf $GCC_FILE_PATH -C $SRCDIR
 
 
-# building bin utils
-# building gcc
+# building binutils and gcc
 mkdir -p $BUILDDIR/build-binutils &&
   cd $BUILDDIR/build-binutils &&
   $SRCDIR/binutils-$BINUTILS_VERSION/configure --target=$TARGET --prefix=$PREFIX --with-sysroot --disable-nls --disable-werror &&

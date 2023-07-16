@@ -3,9 +3,14 @@
 // Therefore quite portable
 // Created on: 13.07.23 22:25
 //
+
+#ifndef KSTRING_H
+#define KSTRING_H
+
 #include <stdarg.h>
 
 #define BUF_MAX 256
+
 static int str_from_uint(unsigned int val, unsigned int base, char* buffer, int buffer_offset) {
     char sec_buffer[BUF_MAX] = {0};
     int j = BUF_MAX - 2;
@@ -13,7 +18,7 @@ static int str_from_uint(unsigned int val, unsigned int base, char* buffer, int 
         sec_buffer[j] = "0123456789abcdefghijklmnopqrstuvwxyz"[val % base];
     }
 
-    for(int k = j; k <= BUF_MAX ; k++) {
+    for(int k = j + 1; k < BUF_MAX-1 ; k++) {
         buffer[buffer_offset] = sec_buffer[k];
         buffer_offset++;
     }
@@ -81,6 +86,12 @@ int kvsprintf(char* buffer, int, char * f_str, va_list args) {
                             val *= -1;
                         }
 
+                        if (val == 0) {
+                            buffer[curr_str_idx] = '0';
+                            curr_str_idx++;
+                            i++;
+                            break;
+                        }
                         curr_str_idx = str_from_uint((unsigned int) val, 10, buffer, curr_str_idx);
                         
                         i++;
@@ -104,3 +115,4 @@ int kvsprintf(char* buffer, int, char * f_str, va_list args) {
 }
 
 
+#endif
