@@ -23,7 +23,7 @@ static int str_from_uint(unsigned int val, unsigned int base, char* buffer, int 
 }
 
 
-int kvsprintf(char* buffer, int buffer_size, char * f_str, va_list args) {
+int kvsprintf(char* buffer, int, char * f_str, va_list args) {
     int i = 0;
     int curr_str_idx = 0;
     while (f_str[i] != '\0') {
@@ -97,7 +97,7 @@ int kvsprintf(char* buffer, int buffer_size, char * f_str, va_list args) {
 
             }
         }
-        assert(curr_str_idx < buffer_size);
+        //assert(curr_str_idx < buffer_size);
         i++;
     }
     return curr_str_idx;

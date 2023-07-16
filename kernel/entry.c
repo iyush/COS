@@ -1,7 +1,7 @@
 #include <stdarg.h>
-#include <assert.h>
-#include <math.h>
-#include <string.h>
+//#include <assert.h>
+//#include <math.h>
+//#include <string.h>
 #include "./kstring.h"
 
 void ksp(char * f_str, ...);
