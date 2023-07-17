@@ -25,7 +25,6 @@ void c_start() {
     //ksp("This should be just string: %s and char: %c\n", "Hello ", 'c');
     //ksp("%");
 
-
     init_idt();
     for (int i = 0; i < 100; i++) {
         kprint("Hello %d ", i);

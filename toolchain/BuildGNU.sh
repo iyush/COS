@@ -41,13 +41,13 @@ tar xvf $GCC_FILE_PATH -C $SRCDIR
 mkdir -p $BUILDDIR/build-binutils &&
   cd $BUILDDIR/build-binutils &&
   $SRCDIR/binutils-$BINUTILS_VERSION/configure --target=$TARGET --prefix=$PREFIX --with-sysroot --disable-nls --disable-werror &&
-  make -j4 &&
+  make -j8 &&
   make install &&
 
   mkdir -p $BUILDDIR/build-gcc &&
   cd $BUILDDIR/build-gcc &&
   $SRCDIR/gcc-$GCC_VERSION/configure --target=$TARGET --prefix="$PREFIX" --disable-nls --enable-languages=c --without-headers &&
-  make all-gcc -j4            &&
-  make all-target-libgcc -j4  &&
+  make all-gcc -j8            &&
+  make all-target-libgcc -j8  &&
   make install-gcc            &&
   make install-target-libgcc 
