@@ -81,7 +81,6 @@ p3_table:
 p2_table:
   resb 4096
 
-
 section .rodata
 gdt64:
     dq 0
@@ -92,9 +91,6 @@ gdt64:
 .pointer:
     dw .pointer - gdt64 - 1
     dq gdt64
-
-section .data
-    myString db "Hello, World!", 0
 
 section .text
 bits 64

@@ -1,6 +1,6 @@
 default: build
 
-FLAGS=-Werror -Wall -Wconversion -Wextra
+FLAGS=-nostdlib -ffreestanding -Werror -Wall -Wconversion -Wextra -mgeneral-regs-only
         
 build: build/kernel.bin
 
@@ -15,7 +15,7 @@ build/boot.o: asm/boot.asm
 	nasm -f elf64 asm/boot.asm -o build/boot.o
 
 build/kernel_entry.o: kernel/*
-	toolchain/build/bin/x86_64-elf-gcc -nostdlib ${FLAGS} -c kernel/entry.c -o build/kernel_entry.o -g 
+	toolchain/build/bin/x86_64-elf-gcc  ${FLAGS} -c kernel/entry.c -o build/kernel_entry.o -g
 
 build/kernel.bin: build/multiboot_header.o build/boot.o build/kernel_entry.o asm/linker.ld
 	ld -n -o build/kernel.bin -T asm/linker.ld build/multiboot_header.o build/boot.o build/kernel_entry.o
