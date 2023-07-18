@@ -87,11 +87,9 @@ void idt_set_handler(int interrupt_vector, void* handler_fn, uint8_t type_attrib
    entry->zero            = 0;
 }
 
+void init_pic(void);
 
 void init_idt(void) {
-
-   // remap the pic interrupts
-
    // setup the interrupt descriptor table
    idtr.limit = (uint16_t)sizeof(idt_entry_64_t) * 256;
    idtr.base = (uint64_t)&idt[0];
@@ -130,11 +128,24 @@ void init_idt(void) {
 
    __asm__ volatile("lidt %0" :: "m"(idtr));          // load the new IDT 
                                                       
-   pic_remap(0x20, 0x28);
-   outb(0x21,0xfd);
-   outb(0xa1,0xff);
+
+   init_pic();
    __asm__ volatile("sti");                           // set the interrupt flag
 }
 
+void init_pic(void) {
+   // we need to offset the pic interrupts, as they will overlap over the 
+   // software interrupts we defined above.
+   pic_remap(0x20, 0x28);
+
+   // setup hardware interrupt handlers
+   for (int vector = 0x20; vector < 0x29; vector++) {
+      idt_set_handler(vector, generic_interrupt_handler, 0x8E);
+   }
+
+   // disable/mask all the hardware interrupts right now.
+   // until we implement keyboard drivers.
+    pic_mask_all_interrupts();
+}
 
 #endif
