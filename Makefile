@@ -1,6 +1,6 @@
 default: build
 
-FLAGS=-nostdlib -ffreestanding -Wall -Wconversion -Wextra -mgeneral-regs-only
+FLAGS=-nostdlib -ffreestanding -Werror -Wall -Wconversion -Wextra -mgeneral-regs-only
         
 build: build/kernel.bin
 

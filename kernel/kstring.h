@@ -38,6 +38,13 @@ int kvsprintf(char* buffer, int, char * f_str, va_list args) {
             curr_str_idx++;
         } else {
             switch (f_str[i+1]) {
+                case '%':
+                    {
+                        buffer[curr_str_idx] = '%';
+                        curr_str_idx++;
+                        i++;
+                        break;
+                    }
                 case 'c':
                     {
                         char to_put = (char)va_arg(args, int);

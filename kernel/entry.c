@@ -10,24 +10,23 @@ void __assert_fail(const char * assertion, const char * file, unsigned int line,
 }
 
 void c_start() {
-    //char myBah [3] = "hel";
+    char myBah [3] = "hel";
 
-    //ksp("Static array: %s\n", myBah);
-    //ksp("char c: %c\n", 'c');
-    //ksp("This should be digit 9: %d\n", 9);
-    //ksp("This should be digit 123123123: %d\n", 123123123);
-    //ksp("This should be digit 0x%x\n", 0xdeadbeef);
+    ksp("Static array: %s\n", &myBah[0]);
+    ksp("char c: %c\n", 'c');
+    ksp("This should be digit 9: %d\n", 9);
+    ksp("This should be digit 123123123: %d\n", 123123123);
+    ksp("This should be digit 0x%x\n", 0xdeadbeef);
 
-    //ksp("This should be overflowed digit: %d\n", 0xfffffffe);
+    ksp("This should be overflowed digit: %d\n", 0xfffffffe);
 
-    //ksp("This is a msg: %s", "Hello World\n");
-    //ksp("This should just print percentage: % \n", "");
-    //ksp("This should be just nothing:%c\n", "");
-    //ksp("This should be just string: %s and char: %c\n", "Hello ", 'c');
-    //ksp("%");
+    ksp("This is a msg: %s", "Hello World\n");
+    ksp("This should just print percentage: %% \n");
+    ksp("This should be just nothing:%s\n", "");
+    ksp("This should be just string: (%s) and char: (%c).\n", "Hello", 'c');
+    ksp("%%");
 
     init_idt();
-    ksp("This is a print to the console!");
 
     for (int i = 0; i < 100; i++) {
         kprint("Hello %d ", i);

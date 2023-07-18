@@ -19,6 +19,7 @@ static void output_to_console(char * str, int size) {
     }
 }
 
+__attribute__((format(printf, 1, 2)))
 void ksp(char * f_str, ...) {
     va_list args;
     va_start(args, f_str);
@@ -93,6 +94,7 @@ void vga_clear() {
 
 }
 
+__attribute__((format(printf, 1, 2)))
 void kprint(char * fmt, ...) {
     if (!is_vga_init) {
         vga_clear();
