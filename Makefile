@@ -32,7 +32,10 @@ run: build build/os.iso
 # on debugging
 # https://gist.github.com/borrrden/3a5488f6a101417297cb43fb1863ebc5
 debug: build build/os.iso
-	qemu-system-x86_64 -cdrom build/os.iso -chardev stdio,id=seabios -device isa-debugcon,iobase=0x402,chardev=seabios -s -S
+	qemu-system-x86_64 -cdrom build/os.iso -s -S &
+	gdb build/kernel.bin -x init.gdb
+
+
 
 clean: 
 	rm -rf build
