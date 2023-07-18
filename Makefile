@@ -27,7 +27,7 @@ build/os.iso: build/kernel.bin asm/grub.cfg
 	grub-mkrescue -o build/os.iso build/isofiles
 
 run: build build/os.iso
-	qemu-system-x86_64 -cdrom build/os.iso -chardev stdio,id=seabios -device isa-debugcon,iobase=0x402,chardev=seabios
+	qemu-system-x86_64 -serial stdio -cdrom build/os.iso
 
 # on debugging
 # https://gist.github.com/borrrden/3a5488f6a101417297cb43fb1863ebc5

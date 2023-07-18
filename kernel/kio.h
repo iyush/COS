@@ -4,21 +4,19 @@
 #include "./kstring.h"
 #include <stdint.h>
 #include <stdbool.h>
+#include "./io.h"
 
 #define VGA_HEIGHT 25
 #define VGA_WIDTH 80
 
+#define COM1_PORT 0x3f8
+
 static void output_to_console(char * str, int size) {
-  asm volatile(
-      "mov %0, %%esi\n"    // Load the address of myString into ESI register
-      "mov $0x402, %%dx\n" // Example port number for serial port (COM1)
-      "cld\n"              // Set the direction flag to forward
-      "mov %1, %%ecx\n"   // Length of the string excluding null character
-      "rep outsb\n"        // Output the string
-      :
-      : "g"(str), "r"(size)// Input constraint: the address of myString
-      : "esi", "edx", "ecx" // Clobbered registers
-  );
+    int i = 0;
+    while (str[i] != '\0' && i < size) {
+        outb(COM1_PORT, (uint8_t)str[i]);
+        i++;
+    }
 }
 
 void ksp(char * f_str, ...) {

@@ -1,5 +1,6 @@
 #include "./kio.h"
 #include "./idt.h"
+#include "./io.h"
 
 void __assert_fail(const char * assertion, const char * file, unsigned int line, const char * function) {
     ksp("!!! Assertion failed for expression: %s\n", assertion);
@@ -26,6 +27,8 @@ void c_start() {
     //ksp("%");
 
     init_idt();
+    ksp("This is a print to the console!");
+
     for (int i = 0; i < 100; i++) {
         kprint("Hello %d ", i);
     }
