@@ -26,7 +26,7 @@ void ksp(char * f_str, ...) {
 
     char buffer[BUF_MAX];
     
-    int size = kvsprintf(buffer, BUF_MAX, f_str, args);
+    int size = kvsprintf(buffer, f_str, args);
 
     output_to_console(buffer, size);
     va_end(args);
@@ -107,7 +107,7 @@ void kprint(char * fmt, ...) {
     // TODO: could overflow! do dynamic mem alloc here?
     char buffer[BUF_MAX];
     
-    int size = kvsprintf(buffer, BUF_MAX, fmt, args);
+    int size = kvsprintf(buffer, fmt, args);
 
     int i = 0;
     while (i < size && buffer[i] != '\0') {

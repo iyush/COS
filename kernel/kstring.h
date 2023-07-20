@@ -8,6 +8,8 @@
 #define KSTRING_H
 
 #include <stdarg.h>
+#include <stdbool.h>
+#include "./stdint.h"
 
 #define BUF_MAX 256
 
@@ -27,97 +29,190 @@ static int str_from_uint(unsigned int val, unsigned int base, char* buffer, int 
     return buffer_offset;
 }
 
+static int str_from_ulongint(unsigned long int val, unsigned long int base, char* buffer, int buffer_offset) {
+    char sec_buffer[BUF_MAX] = {0};
+    int j = BUF_MAX - 2;
+    for (; val && j; --j, val /= base) {
+        sec_buffer[j] = "0123456789abcdefghijklmnopqrstuvwxyz"[val % base];
+    }
 
-int kvsprintf(char* buffer, int, char * f_str, va_list args) {
+    for(int k = j + 1; k < BUF_MAX-1 ; k++) {
+        buffer[buffer_offset] = sec_buffer[k];
+        buffer_offset++;
+    }
+
+    // returns new buffer offset
+    return buffer_offset;
+}
+
+// make this a size_t
+int strlen(const char* s) {
+    if (!*s) {
+        return 0;
+    }
+    int size = 0;
+    while (*s != '\0') {
+        size++;
+        s++;
+    }
+    return size;
+}
+
+int strcmp(const char * s1, char * s2) {
+    int i = 0;
+    int ret_val = 0;
+
+
+    if (strlen(s1) < strlen(s2)) {
+        return -1;
+    } else if (strlen(s1) > strlen(s2)) {
+        return 1;
+    }
+
+    while (s1[i] != '\0' && s2[i] != '\0' ) {
+        int diff = s1[i] - s2[i];
+        if (diff > 0) {
+            ret_val = 1;
+            break;
+        } else if (diff < 0) {
+            ret_val = -1;
+            break;
+        }
+        i++;
+    }
+    return ret_val;
+}
+
+static void _parse_inner_string(char * f_str, char * buffer, int * curr_str_idx, int * i, bool is_long, va_list args) {
+    switch (f_str[*i+1]) {
+        case '%':
+            {
+                buffer[*curr_str_idx] = '%';
+                (*curr_str_idx)++;
+                (*i)++;
+                break;
+            }
+        case 'c':
+            {
+                char to_put = (char)va_arg(args, int);
+
+                buffer[*curr_str_idx] = to_put;
+                (*curr_str_idx)++;
+                (*i)++;
+                break;
+            }
+        case 's':
+            {
+                char * to_put = va_arg(args, char *);
+
+                // we append
+                int j = 0;
+                while (to_put[j] != '\0') {
+                    buffer[*curr_str_idx] = to_put[j];
+                    (*curr_str_idx)++;
+                    j++;
+                }
+
+                // consume the s
+                (*i)++;
+                break;
+            }
+
+        case 'x':
+            {
+                // NOTE: for some reason if we are passing x, we should convert it to unsigned.
+                // this is also what c compiler does 
+                // https://godbolt.org/z/cTPareMMn
+                if (is_long) {
+                    unsigned long int val = va_arg(args, unsigned long int);
+                    *curr_str_idx = str_from_ulongint(val, 16, buffer, *curr_str_idx);
+                } else {
+                    unsigned int val = va_arg(args, unsigned int);
+                    *curr_str_idx = str_from_uint(val, 16, buffer, *curr_str_idx);
+                }
+
+                (*i)++;
+                break;
+            }
+
+        case 'p':
+            {
+                unsigned long int val = va_arg(args, unsigned long int);
+                *curr_str_idx = str_from_ulongint(val, 16, buffer, *curr_str_idx);
+                (*i)++;
+                break;
+            }
+
+        case 'b':
+            {
+                // NOTE: this is not standard, other c compilers does not have a binary mode!
+                if (is_long) {
+                    unsigned long int val = va_arg(args, unsigned long int);
+                    *curr_str_idx = str_from_ulongint(val, 2, buffer, *curr_str_idx);
+                } else {
+                    unsigned int val = va_arg(args, unsigned int);
+                    *curr_str_idx = str_from_uint(val, 2, buffer, *curr_str_idx);
+                }
+
+                (*i)++;
+                break;
+            }
+
+        case 'd':
+            {
+                int val = va_arg(args, int);
+                if (val < 0) {
+                    buffer[*curr_str_idx] = '-';
+                    (*curr_str_idx)++;
+                    val *= -1;
+                }
+
+                if (val == 0) {
+                    buffer[*curr_str_idx] = '0';
+                    (*curr_str_idx)++;
+                    (*i)++;
+                    break;
+                }
+                *curr_str_idx = str_from_uint((unsigned int) val, 10, buffer, *curr_str_idx);
+
+                (*i)++;
+                break;
+            }
+
+        default:
+            buffer[*curr_str_idx] = f_str[*i];
+            (*curr_str_idx)++;
+            break;
+    }
+}
+
+
+
+int kvsprintf(char* buffer, char * f_str, va_list args) {
     int i = 0;
     int curr_str_idx = 0;
+
+    bool is_long = false;
+
     while (f_str[i] != '\0') {
         if (f_str[i] != '%') { 
             // default
             buffer[curr_str_idx] = f_str[i];
             curr_str_idx++;
         } else {
-            switch (f_str[i+1]) {
-                case '%':
-                    {
-                        buffer[curr_str_idx] = '%';
-                        curr_str_idx++;
-                        i++;
-                        break;
-                    }
-                case 'c':
-                    {
-                        char to_put = (char)va_arg(args, int);
-
-                        buffer[curr_str_idx] = to_put;
-                        curr_str_idx++;
-                        i++;
-                        break;
-                    }
-                case 's':
-                    {
-                        char * to_put = va_arg(args, char *);
-
-                        // we append
-                        int j = 0;
-                        while (to_put[j] != '\0') {
-                            buffer[curr_str_idx] = to_put[j];
-                            curr_str_idx++;
-                            j++;
-                        }
-
-                        // consume the s
-                        i++;
-                        break;
-                    }
-                
-                case 'x':
-                    {
-                        int val = va_arg(args, int);
-                        if (val < 0) {
-                            buffer[curr_str_idx] = '-';
-                            curr_str_idx++;
-                            val *= -1;
-                        }
-                        curr_str_idx = str_from_uint((unsigned int) val, 16, buffer, curr_str_idx);
-                        i++;
-                        break;
-                    }
-
-                case 'd':
-                    {
-                        int val = va_arg(args, int);
-                        if (val < 0) {
-                            buffer[curr_str_idx] = '-';
-                            curr_str_idx++;
-                            val *= -1;
-                        }
-
-                        if (val == 0) {
-                            buffer[curr_str_idx] = '0';
-                            curr_str_idx++;
-                            i++;
-                            break;
-                        }
-                        curr_str_idx = str_from_uint((unsigned int) val, 10, buffer, curr_str_idx);
-                        
-                        i++;
-                        break;
-                    }
-
-                default:
-                    buffer[curr_str_idx] = f_str[i];
-                    curr_str_idx++;
-                    break;
-            }
-            if (f_str[i+1] == 's') {
+            if (f_str[i+1] == 'l') {
+                is_long = true;
+                i++;
+                _parse_inner_string(f_str, buffer, &curr_str_idx, &i, is_long, args);
+                is_long = false;
             } else {
-
+                _parse_inner_string(f_str, buffer, &curr_str_idx, &i, is_long, args);
             }
         }
         //assert(curr_str_idx < buffer_size);
         i++;
     }
+    va_end(args);
     return curr_str_idx;
 }
 

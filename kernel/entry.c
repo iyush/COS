@@ -2,6 +2,8 @@
 #include "./idt.h"
 #include "./io.h"
 
+#include "./test/test_kstring.h"
+
 void __assert_fail(const char * assertion, const char * file, unsigned int line, const char * function) {
     ksp("!!! Assertion failed for expression: %s\n", assertion);
     ksp("                  in               : %s[%d:]\n", file, line);
@@ -9,28 +11,26 @@ void __assert_fail(const char * assertion, const char * file, unsigned int line,
     while (1) {}
 }
 
+
+uint32_t cpuid() {
+    uint32_t cpuid;
+    asm __volatile__ (
+            "mov $0x80000001, %%eax\n"
+            "cpuid\n"
+            "mov %%edx, %0;"
+            :"=r"(cpuid)
+            );
+    return cpuid;
+}
+
 void c_start() {
-    char myBah [3] = "hel";
-
-    ksp("Static array: %s\n", &myBah[0]);
-    ksp("char c: %c\n", 'c');
-    ksp("This should be digit 9: %d\n", 9);
-    ksp("This should be digit 123123123: %d\n", 123123123);
-    ksp("This should be digit 0x%x\n", 0xdeadbeef);
-
-    ksp("This should be overflowed digit: %d\n", 0xfffffffe);
-
-    ksp("This is a msg: %s", "Hello World\n");
-    ksp("This should just print percentage: %% \n");
-    ksp("This should be just nothing:%s\n", "");
-    ksp("This should be just string: (%s) and char: (%c).\n", "Hello", 'c');
-    ksp("%%");
+    test_kstring_all();
+    unsigned int * x = (unsigned int * )0xdeadbeefdeadbeef;
+    ksp("%x\n", cpuid());
+    ksp("%p\n", x);
+    cpuid();
 
     init_idt();
-
-    for (int i = 0; i < 100; i++) {
-        kprint("Hello %d ", i);
-    }
 
     while (1) {
 
