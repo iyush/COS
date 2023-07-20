@@ -137,6 +137,10 @@ static void _parse_inner_string(char * f_str, char * buffer, int * curr_str_idx,
 
         case 'p':
             {
+                buffer[*curr_str_idx] = '0';
+                (*curr_str_idx)++;
+                buffer[*curr_str_idx] = 'x';
+                (*curr_str_idx)++;
                 unsigned long int val = va_arg(args, unsigned long int);
                 *curr_str_idx = str_from_ulongint(val, 16, buffer, *curr_str_idx);
                 (*i)++;
@@ -153,6 +157,22 @@ static void _parse_inner_string(char * f_str, char * buffer, int * curr_str_idx,
                     unsigned int val = va_arg(args, unsigned int);
                     *curr_str_idx = str_from_uint(val, 2, buffer, *curr_str_idx);
                 }
+
+                (*i)++;
+                break;
+            }
+
+        case 'u':
+            {
+                unsigned int val = va_arg(args, unsigned int);
+
+                if (val == 0) {
+                    buffer[*curr_str_idx] = '0';
+                    (*curr_str_idx)++;
+                    (*i)++;
+                    break;
+                }
+                *curr_str_idx = str_from_uint((unsigned int) val, 10, buffer, *curr_str_idx);
 
                 (*i)++;
                 break;

@@ -1,11 +1,11 @@
 global start
+global MULTIBOOT_TAG_PTR
 extern c_start
 
 section .text
 bits 32
 start:
   ;; We are doing identity mapping here
-
   ;; p4[0] -> p3[0]
   mov eax, p3_table
   or eax, 011b                  ; setting flag: present and writable
@@ -81,6 +81,10 @@ p3_table:
 p2_table:
   resb 4096
 
+section .bss
+MULTIBOOT_TAG_PTR:
+  resb 64
+
 section .rodata
 gdt64:
     dq 0
@@ -95,11 +99,10 @@ gdt64:
 section .text
 bits 64
 
+
 long_mode_start:
   ;; 64 bit mode already!!
-  mov rax, 0x2f592f412f4b2f4f
-  mov qword [0xb8000], rax
-
+  mov qword [MULTIBOOT_TAG_PTR], rbx
   call c_start
 
   hlt

@@ -1,4 +1,5 @@
 
+global MULTIBOOT_MAGIC_NUMBER
 section .multiboot_header
 
 ;extern main
@@ -55,3 +56,9 @@ framebuffer_tag_end:
         dw 0
         dd 8
 header_end:
+
+section .rodata:
+MULTIBOOT_MAGIC_NUMBER:
+        dd MULTIBOOT_MAGIC ; magic number
+
+

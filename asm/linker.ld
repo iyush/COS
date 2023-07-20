@@ -1,20 +1,21 @@
-ENTRY(start)
+/* Entry symbol is not necessary as by default it already
+ * searches for 'start' */
+/* ENTRY(start) */
+
 
 SECTIONS {
-  . = 1M;
-
   .boot : 
   {
     *(.multiboot_header)
   }
 
+  .text :
+  {
+    *(.text)
+  }
+
   .bss : 
   {
     *(.bss)
-  }
-
-  .text :
-  {
-    *(.multiboot_header)
   }
 }

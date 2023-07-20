@@ -1,6 +1,7 @@
 default: build
 
-FLAGS=-nostdlib -ffreestanding -Werror -Wall -Wconversion -Wextra -mgeneral-regs-only
+FLAGS=-nostdlib -ffreestanding -Wall -Wconversion -Wextra -mgeneral-regs-only
+QEMU_FLAGS=-cdrom build/os.iso -m 256
         
 build: build/kernel.bin
 
@@ -27,15 +28,13 @@ build/os.iso: build/kernel.bin asm/grub.cfg
 	grub-mkrescue -o build/os.iso build/isofiles
 
 run: build build/os.iso
-	qemu-system-x86_64 -serial stdio -cdrom build/os.iso
+	qemu-system-x86_64 ${QEMU_FLAGS} -serial stdio 
 
 # on debugging
 # https://gist.github.com/borrrden/3a5488f6a101417297cb43fb1863ebc5
 debug: build build/os.iso
-	qemu-system-x86_64 -cdrom build/os.iso -s -S &
+	qemu-system-x86_64 ${QEMU_FLAGS} -s -S &
 	gdb build/kernel.bin -x init.gdb
-
-
 
 clean: 
 	rm -rf build

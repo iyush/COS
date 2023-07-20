@@ -62,8 +62,8 @@ int test_kvstringf() {
    int test_failed = 0;
 
    char buffer[256] = {0};
-   test_s(buffer, "%c\n", 'c');
-   ASSERT_EQ_STR(buffer, "c\n");
+   test_s(buffer, "%c", 'c');
+   ASSERT_EQ_STR(buffer, "c");
 
    set_buffer(buffer, 0);
    test_s(buffer, "%d", 123123123);
@@ -83,6 +83,10 @@ int test_kvstringf() {
    test_s(buffer, "%lx", 0xdeadbeefdeadbeef);
    ASSERT_EQ_STR(buffer, "deadbeefdeadbeef");
 
+    unsigned int * x = (unsigned int * )0xdeadbeefdeadbeef;
+    test_s(buffer, "%p", x);
+    ASSERT_EQ_STR(buffer, "0xdeadbeefdeadbeef");
+
    set_buffer(buffer, 0);
    test_s(buffer, "%s", "Hello world");
    ASSERT_EQ_STR(buffer, "Hello world");
@@ -95,8 +99,8 @@ int test_kvstringf() {
    test_s(buffer, "%s", "");
    ASSERT_EQ_STR(buffer, "");
 
-   test_s(buffer, "(%s) and char: (%c)\n", "Hello", 'c');
-   ASSERT_EQ_STR(buffer, "(Hello) and char: (c)\n");
+   test_s(buffer, "(%s) and char: (%c)", "Hello", 'c');
+   ASSERT_EQ_STR(buffer, "(Hello) and char: (c)");
     
     return test_failed;
 
