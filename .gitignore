@@ -1,3 +1,9 @@
 build
 toolchain/build
 toolchain/src
+
+*.o
+*.elf
+*.bin
+*.iso
+isofiles/

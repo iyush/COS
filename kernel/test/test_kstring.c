@@ -1,5 +1,4 @@
-#ifndef TEST_KSTRING_H
-#define TEST_KSTRING_H
+#pragma once
 #include <stdbool.h>
 #include "../kstring.h"
 #include "../kio.h"
@@ -121,4 +120,3 @@ void test_kstring_all() {
 }
 
 
-#endif

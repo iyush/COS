@@ -96,9 +96,69 @@ gdt64:
     dw .pointer - gdt64 - 1
     dq gdt64
 
+
+section .bss
+regs:
+  resb 2048
+
 section .text
 bits 64
 
+%macro INTERRUPT_WRAPPER 1
+global int_wrapper_%1
+int_wrapper_%1:
+  push rax
+  push rbx
+  push rcx
+  push rdx
+  push rbp
+  push rsi
+  push rdi
+  push rsp
+  push r8
+  push r9
+  push r10
+  push r11
+  push r12
+  push r13
+  push r14
+  push r15
+  pushfq
+  ; push rip
+  ; push cs
+  ; push ds
+  ; push ss
+  ; push fs
+  ; push gs
+
+  ;; here we go.............
+  call %1
+
+  pop rax
+  pop rbx
+  pop rcx
+  pop rdx
+  pop rbp
+  pop rsi
+  pop rdi
+  pop rsp
+  pop r8
+  pop r9
+  pop r10
+  pop r11
+  pop r12
+  pop r13
+  pop r14
+  pop r15
+  popfq
+  ; pop rip
+
+  ; pop cs
+  ; pop ds
+  ; pop ss
+  ; pop fs
+  ; pop gs
+%endmacro
 
 long_mode_start:
   ;; 64 bit mode already!!
@@ -106,3 +166,6 @@ long_mode_start:
   call c_start
 
   hlt
+
+INTERRUPT_WRAPPER 1
+INTERRUPT_WRAPPER 2

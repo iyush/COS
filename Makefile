@@ -1,41 +1,45 @@
 default: build
 
 FLAGS=-nostdlib -ffreestanding -Wall -Wconversion -Wextra -mgeneral-regs-only
-QEMU_FLAGS=-cdrom build/os.iso -m 256
-        
-build: build/kernel.bin
+QEMU_FLAGS=-cdrom os.iso -m 256
 
-.PHONY: default build run clean
 
-build/multiboot_header.o: asm/multiboot_header.asm
-	mkdir -p build
-	nasm -f elf64 asm/multiboot_header.asm -o build/multiboot_header.o
+build: kernel.elf
 
-build/boot.o: asm/boot.asm
-	mkdir -p build
-	nasm -f elf64 asm/boot.asm -o build/boot.o
+.PHONY: default all build run clean
 
-build/kernel_entry.o: kernel/*
-	toolchain/build/bin/x86_64-elf-gcc  ${FLAGS} -c kernel/entry.c -o build/kernel_entry.o -g
+%.o: kernel/%.asm
+	nasm -f elf64 $< -o $@
 
-build/kernel.bin: build/multiboot_header.o build/boot.o build/kernel_entry.o asm/linker.ld
-	ld -n -o build/kernel.bin -T asm/linker.ld build/multiboot_header.o build/boot.o build/kernel_entry.o
+%.o: kernel/%.c
+	toolchain/build/bin/x86_64-elf-gcc ${FLAGS} -c $< -o $@ -g
 
-build/os.iso: build/kernel.bin asm/grub.cfg
-	mkdir -p build/isofiles/boot/grub
-	cp asm/grub.cfg build/isofiles/boot/grub
-	cp build/kernel.bin build/isofiles/boot/
-	grub-mkrescue -o build/os.iso build/isofiles
+kernel.elf: multiboot_header.o boot.o entry.o idt.o kio.o pic.o kstring.o io.o
+	ld -n -o kernel.elf -T linker.ld $^
 
-run: build build/os.iso
+os.iso: kernel.elf grub.cfg
+	mkdir -p isofiles/boot/grub
+	cp grub.cfg isofiles/boot/grub
+	cp kernel.elf isofiles/boot/
+	grub-mkrescue -o os.iso isofiles
+
+run: build os.iso
 	qemu-system-x86_64 ${QEMU_FLAGS} -serial stdio 
 
 # on debugging
 # https://gist.github.com/borrrden/3a5488f6a101417297cb43fb1863ebc5
-debug: build build/os.iso
+debug: build os.iso
 	qemu-system-x86_64 ${QEMU_FLAGS} -s -S &
-	gdb build/kernel.bin -x init.gdb
+	gf2 kernel.elf -x init.gdb
+
+bochs: build os.iso
+	bochs -q -f .bochsrc
 
 clean: 
-	rm -rf build
-
+	rm -rf *.o
+	rm -rf *.elf
+	rm -rf *.bin
+	rm -rf *.iso
+	rm -rf isofiles
+        
+all: build

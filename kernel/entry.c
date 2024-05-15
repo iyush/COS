@@ -2,8 +2,9 @@
 #include "./idt.h"
 #include "./io.h"
 #include "multiboot.h"
+#include <stdint.h>
 
-#include "./test/test_kstring.h"
+extern void test_kstring_all();
 
 void __assert_fail(const char * assertion, const char * file, unsigned int line, const char * function) {
     ksp("!!! Assertion failed for expression: %s\n", assertion);
@@ -27,8 +28,11 @@ uint32_t cpuid() {
 extern uint64_t MULTIBOOT_TAG_PTR;
 extern uint64_t MULTIBOOT_MAGIC_NUMBER;
 
+
+// page tables 64 bit
+
 void c_start() {
-    test_kstring_all();
+ // // //test_kstring_all();
 
     struct multiboot_tag *tag;
     unsigned size;
@@ -41,12 +45,16 @@ void c_start() {
         return;
     }
 
+    init_idt();
+
+    asm volatile ("xchgw %bx, %bx");
+
     size = *(unsigned *) MULTIBOOT_TAG_PTR;
     ksp ("Announced mbi size 0x%x\n", size);
     for (tag = (struct multiboot_tag *) (MULTIBOOT_TAG_PTR + 8);
             tag->type != MULTIBOOT_TAG_TYPE_END;
             tag = (struct multiboot_tag *) ((multiboot_uint8_t *) tag 
-                + ((tag->size + 7) & ~7)))
+                + ((tag->size + 7) & (unsigned int)~7)))
     {
         ksp ("Tag 0x%x, Size 0x%x\n", tag->type, tag->size);
         switch (tag->type)
@@ -88,7 +96,7 @@ void c_start() {
                             mmap = (multiboot_memory_map_t *) 
                             ((unsigned long) mmap
                              + ((struct multiboot_tag_mmap *) tag)->entry_size))
-                        ksp (" base_MULTIBOOT_TAG_PTR = 0x%x%x,"
+                        ksp (" base_addr = 0x%x%x,"
                                 " length = 0x%x%x, type = 0x%x\n",
                                 (unsigned) (mmap->addr >> 32),
                                 (unsigned) (mmap->addr & 0xffffffff),
@@ -100,9 +108,11 @@ void c_start() {
         }
     }
     tag = (struct multiboot_tag *) ((multiboot_uint8_t *) tag 
-            + ((tag->size + 7) & ~7));
+            + ((tag->size + 7) & (unsigned int)~7));
 
-    ksp("Total mbi size 0x%lx\n", (unsigned) tag - MULTIBOOT_TAG_PTR);
+    ksp("Total mbi size 0x%x\n", (unsigned)( tag - MULTIBOOT_TAG_PTR));
+
+
 
     /* Check bit 6 to see if we have a valid memory map */
     //if(!(mbd->flags >> 6 & 0x1)) {
@@ -113,7 +123,6 @@ void c_start() {
     //ksp("mbd p: %p\n", mbd);
     //ksp("mbd: %lx\n", *mbd);
 
-    init_idt();
 
     while (1) {
 
