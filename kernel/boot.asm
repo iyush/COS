@@ -1,6 +1,7 @@
 global start
 global MULTIBOOT_TAG_PTR
 extern c_start
+extern pic_send_end_of_interrupt
 
 section .text
 bits 32
@@ -104,26 +105,28 @@ regs:
 section .text
 bits 64
 
-%macro INTERRUPT_WRAPPER 1
+%macro INTERRUPT_WRAPPER 2
 global int_wrapper_%1
+extern %2
 int_wrapper_%1:
-  push rax
-  push rbx
-  push rcx
-  push rdx
-  push rbp
-  push rsi
-  push rdi
-  push rsp
-  push r8
-  push r9
-  push r10
-  push r11
-  push r12
-  push r13
-  push r14
-  push r15
+  ;; this should be in opposite order of struct regs
   pushfq
+  push r15
+  push r14
+  push r13
+  push r12
+  push r11
+  push r10
+  push r9
+  push r8
+  push rsp
+  push rdi
+  push rsi
+  push rbp
+  push rdx
+  push rcx
+  push rbx
+  push rax
   ; push rip
   ; push cs
   ; push ds
@@ -132,7 +135,8 @@ int_wrapper_%1:
   ; push gs
 
   ;; here we go.............
-  call %1
+  cld
+  call %2
 
   pop rax
   pop rbx
@@ -158,6 +162,9 @@ int_wrapper_%1:
   ; pop ss
   ; pop fs
   ; pop gs
+  mov rax, %1
+  ;; call pic_send_end_of_interrupt
+  iretq
 %endmacro
 
 long_mode_start:
@@ -167,5 +174,27 @@ long_mode_start:
 
   hlt
 
-INTERRUPT_WRAPPER 1
-INTERRUPT_WRAPPER 2
+INTERRUPT_WRAPPER 0,  divide_error                 
+INTERRUPT_WRAPPER 1,  debug                        
+INTERRUPT_WRAPPER 2,  nmi_interrupt                
+INTERRUPT_WRAPPER 3,  breakpoint                   
+INTERRUPT_WRAPPER 4,  overflow                     
+INTERRUPT_WRAPPER 5,  bound_range_exceeded         
+INTERRUPT_WRAPPER 6,  invalid_opcode               
+INTERRUPT_WRAPPER 7,  device_not_available         
+INTERRUPT_WRAPPER 8,  double_fault                 
+INTERRUPT_WRAPPER 9,  co_processor_segment_overrun 
+INTERRUPT_WRAPPER 10, invalid_tss                  
+INTERRUPT_WRAPPER 11, segment_not_present          
+INTERRUPT_WRAPPER 12, stack_segment_fault          
+INTERRUPT_WRAPPER 13, general_protection           
+INTERRUPT_WRAPPER 14, page_fault                   
+INTERRUPT_WRAPPER 16, floating_point_error         
+INTERRUPT_WRAPPER 17, alignment_check              
+INTERRUPT_WRAPPER 18, machine_check                
+INTERRUPT_WRAPPER 19, simd_floating_point_exception
+INTERRUPT_WRAPPER 20, virtualization_exception 
+INTERRUPT_WRAPPER 21, control_protection_exception
+
+;; hardware interrupts
+INTERRUPT_WRAPPER 32, timer

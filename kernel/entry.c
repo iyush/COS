@@ -113,7 +113,6 @@ void c_start() {
     ksp("Total mbi size 0x%x\n", (unsigned)( tag - MULTIBOOT_TAG_PTR));
 
 
-
     /* Check bit 6 to see if we have a valid memory map */
     //if(!(mbd->flags >> 6 & 0x1)) {
     //    ksp("invalid memory map given by GRUB bootloader");
@@ -125,6 +124,5 @@ void c_start() {
 
 
     while (1) {
-
     }
 }

@@ -1,6 +1,7 @@
 #ifndef PIC_H
 #define PIC_H
 #include "./io.h"
+#include "./kio.h"
 
 #define PIC_MASTER_COMMAND   0x0020
 #define PIC_MASTER_DATA      0x0021

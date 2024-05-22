@@ -29,7 +29,12 @@ run: build os.iso
 # on debugging
 # https://gist.github.com/borrrden/3a5488f6a101417297cb43fb1863ebc5
 debug: build os.iso
-	qemu-system-x86_64 ${QEMU_FLAGS} -s -S &
+	qemu-system-x86_64 ${QEMU_FLAGS} -serial stdio -s -S
+
+gdb: build os.iso
+	gdb kernel.elf -x init.gdb
+
+gf: build os.iso
 	gf2 kernel.elf -x init.gdb
 
 bochs: build os.iso
