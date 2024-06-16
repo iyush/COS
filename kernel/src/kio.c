@@ -37,7 +37,7 @@ static bool is_vga_init = false;
 static uint8_t vga_pos_x = 0;
 static uint8_t vga_pos_y = 0;
 
-enum VGAColor: uint8_t {
+enum VGAColor {
     VGABlack        = 0,
     VGABlue         = 1,
     VGAGreen        = 2,
