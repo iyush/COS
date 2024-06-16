@@ -98,8 +98,8 @@ void vga_clear() {
 __attribute__((format(printf, 1, 2)))
 void kprint(char * fmt, ...) {
     if (!is_vga_init) {
-        vga_clear();
-        is_vga_init = true;
+         vga_clear();
+         is_vga_init = true;
     }
 
     va_list args;

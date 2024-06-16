@@ -25,13 +25,188 @@ uint32_t cpuid() {
     return cpuid;
 }
 
-extern uint64_t MULTIBOOT_TAG_PTR;
-extern uint64_t MULTIBOOT_MAGIC_NUMBER;
+static uint64_t MULTIBOOT_TAG_PTR =0;
+static uint64_t MULTIBOOT_MAGIC_NUMBER= 0;
 
 
-// page tables 64 bit
+struct pml5 {
+    uint64_t p: 1;
+    uint64_t rw: 1;
+    uint64_t us: 1;
+    uint64_t pwt: 1;
+    uint64_t pcd: 1;
+    uint64_t a: 1;
+    uint64_t ig: 5;
+    uint64_t r: 1;
+    uint64_t pml4: 40;
+    uint64_t ig2: 11;
+    uint64_t xd: 1;
+};
 
-void c_start() {
+struct pml4 {
+    uint64_t p: 1;
+    uint64_t rw: 1;
+    uint64_t us: 1;
+    uint64_t pwt: 1;
+    uint64_t pcd: 1;
+    uint64_t a: 1;
+    uint64_t ig: 5;
+    uint64_t r: 1;
+    uint64_t pdpte: 40;
+    uint64_t ig2: 11;
+    uint64_t xd: 1;
+};
+
+
+struct pdpte {
+    uint64_t p: 1;
+    uint64_t rw: 1;
+    uint64_t us: 1;
+    uint64_t pwt: 1;
+    uint64_t pcd: 1;
+    uint64_t a: 1;
+    uint64_t ig: 5;
+    uint64_t r: 1;
+    uint64_t pde: 40;
+    uint64_t ig2: 11;
+    uint64_t xd: 1;
+};
+
+struct pdpte_direct {
+    uint64_t p: 1;
+    uint64_t rw: 1;
+    uint64_t us: 1;
+    uint64_t pwt: 1;
+    uint64_t pcd: 1;
+    uint64_t a: 1;
+    uint64_t d: 1;
+    uint64_t ps: 1;
+    uint64_t g: 1;
+    uint64_t ig: 2;
+    uint64_t r: 1;
+    uint64_t pat: 1;
+    uint64_t ig2: 17;
+    uint64_t physical_addr: 22;
+    uint64_t ig3: 7;
+    uint64_t protection_key: 4;
+    uint64_t xd: 1;
+};
+
+struct pde {
+    uint64_t p: 1;
+    uint64_t rw: 1;
+    uint64_t us: 1;
+    uint64_t pwt: 1;
+    uint64_t pcd: 1;
+    uint64_t a: 1;
+    uint64_t ig: 1;
+    uint64_t ps: 1;
+    uint64_t ig2: 3;
+    uint64_t r: 1;
+    uint64_t pte: 40;
+    uint64_t ig3: 11;
+    uint64_t xd: 1;
+};
+
+struct pte {
+    uint64_t p: 1;
+    uint64_t rw: 1;
+    uint64_t us: 1;
+    uint64_t pwt: 1;
+    uint64_t pcd: 1;
+    uint64_t a: 1;
+    uint64_t d: 1;
+    uint64_t pat: 1;
+    uint64_t g: 1;
+    uint64_t ig: 2;
+    uint64_t r: 1;
+    uint64_t physical_addr: 40;
+    uint64_t ig2: 7;
+    uint64_t protection_key: 4;
+    uint64_t xd: 1;
+};
+
+struct pml4* page_table_4;
+
+extern int p4_table;
+
+void dmp_page_table(struct pml4* p4_t) {
+    ksp("P4 TABLE 0x%lx\n",    (uint64_t)p4_t);
+    ksp("\t p: %d\n",       p4_t->p);
+    ksp("\t rw: %d\n",      p4_t->rw);
+    ksp("\t us: %d\n",      p4_t->us);
+    ksp("\t pwt: %d\n",     p4_t->pwt);
+    ksp("\t pcd: %d\n",     p4_t->pcd);
+    ksp("\t a: %d\n",       p4_t->a);
+    ksp("\t ig: %d\n",      p4_t->ig);
+    ksp("\t r: %d\n",       p4_t->r);
+    ksp("\t ig2: %d\n",     p4_t->ig2);
+    ksp("\t xd: %d\n",      p4_t->xd);
+
+    struct pdpte * p3_t = (struct pdpte*)(uint64_t)(p4_t->pdpte << 12);
+    ksp("\t P3 Table - 0x%x\n", p3_t);
+    ksp("\t\t p: %d\n",       p3_t->p);
+    ksp("\t\t rw: %d\n",      p3_t->rw);
+    ksp("\t\t us: %d\n",      p3_t->us);
+    ksp("\t\t pwt: %d\n",     p3_t->pwt);
+    ksp("\t\t pcd: %d\n",     p3_t->pcd);
+    ksp("\t\t a: %d\n",       p3_t->a);
+    ksp("\t\t ig: %d\n",      p3_t->ig);
+    ksp("\t\t r: %d\n",       p3_t->r);
+    ksp("\t\t ig2: %d\n",     p3_t->ig2);
+    ksp("\t\t xd: %d\n",      p3_t->xd);
+
+    struct pde * p2_t = (struct pde*)(uint64_t)(p3_t->pde << 12);
+    ksp("\t P2 Table - 0x%x\n",   p2_t);
+    ksp("\t\t\t p: %d\n",       p2_t->p);
+    ksp("\t\t\t rw: %d\n",      p2_t->rw);
+    ksp("\t\t\t us: %d\n",      p2_t->us);
+    ksp("\t\t\t pwt: %d\n",     p2_t->pwt);
+    ksp("\t\t\t pcd: %d\n",     p2_t->pcd);
+    ksp("\t\t\t a: %d\n",       p2_t->a);
+    ksp("\t\t\t ig: %d\n",      p2_t->ig);
+    ksp("\t\t\t ps: %d\n",      p2_t->ps);
+    ksp("\t\t\t r: %d\n",       p2_t->r);
+    ksp("\t\t\t xd: %d\n",      p2_t->xd);
+
+    struct pte * p1_t = (struct pte*)(uint64_t)(p2_t->pte << 12);
+    ksp("\t P1 Table - %d\n",             p1_t);
+    ksp("\t\t\t\t p: %d\n",               p1_t->p);
+    ksp("\t\t\t\t rw: %d\n",              p1_t->rw);
+    ksp("\t\t\t\t us: %d\n",              p1_t->us);
+    ksp("\t\t\t\t pwt: %d\n",             p1_t->pwt);
+    ksp("\t\t\t\t pcd: %d\n",             p1_t->pcd);
+    ksp("\t\t\t\t a: %d\n",               p1_t->a);
+    ksp("\t\t\t\t d: %d\n",               p1_t->d);
+    ksp("\t\t\t\t pat: %d\n",             p1_t->pat);
+    ksp("\t\t\t\t g: %d\n",               p1_t->g);
+    ksp("\t\t\t\t r: %d\n",               p1_t->r);
+    ksp("\t\t\t\t physical_addr: %d\n",   p1_t->physical_addr);
+    ksp("\t\t\t\t protection_key: %d\n",  p1_t->protection_key);
+    ksp("\t\t\t\t xd: %d\n",              p1_t->xd);
+}
+
+void _start() {
+    // page_table_4 = (struct pml4 *) &p4_table;
+    while(1) {}
+    char * str = "Hello world\n";
+    ksp(str);
+
+    //*(page_table_4 + 510) = *page_table_4;
+
+    /*
+    
+       currently we are operating in a identity kernel, i.e.
+       0x0000000000000000-0x000000003fffffff -> 0x000000000000-0x00003fffffff
+
+       we want to half a higher half kernel, i.e
+       0xffffff8000000000-0xffffff803fffffff -> 0x000000000000-0x00003fffffff
+     */ 
+
+    asm volatile ("xchgw %bx, %bx");
+}
+
+void c_start_2() {
  // // //test_kstring_all();
 
     struct multiboot_tag *tag;

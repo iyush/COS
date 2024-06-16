@@ -39,6 +39,7 @@ struct __attribute__((packed)) regs {
    uint64_t r15;
 
    uint64_t rflags;
+   uint64_t interrupt_number;
    // uint64_t rip;
 
    // uint16_t cs;
@@ -81,12 +82,25 @@ struct interrupt_frame
     uint64_t ss;
 };
 
-__attribute__ ((interrupt))
-static void generic_interrupt_handler(struct interrupt_frame *frame)
+static int i = 0;
+
+struct regs timer(struct regs r) { 
+   dmpregs(r);
+   pic_send_end_of_interrupt();
+   return r;
+} // 21
+
+void all_interrupts_handler(struct regs r)
 {
-   (void)frame;
-   ksp("we received an generic interrupt");
-   while (1) {}
+   ksp("we received an generic interrupt %ld\n", r.interrupt_number);
+   dmpregs(r);
+   switch (r.interrupt_number) {
+      case 32:
+         timer(r);
+         break;
+      default:
+         while(1) {}
+   };
 }
 
 __attribute__ ((interrupt))
@@ -149,10 +163,6 @@ void virtualization_exception     (struct interrupt_frame*          ) { ksp("vir
 void control_protection_exception (struct interrupt_frame*          ) { ksp("control protection exception");  halt(); } // 21
 
 
-struct regs timer(struct regs r) { 
-   dmpregs(r);
-   return r;
-} // 21
 
 
 void idt_set_handler(int interrupt_vector, void* handler_fn, uint8_t type_attribute) {
@@ -205,27 +215,27 @@ void init_idt(void) {
    // idt_set_handler(20, virtualization_exception     , 0x8E);
    // idt_set_handler(21, control_protection_exception , 0x8E);
 
-   idt_set_handler(0,  int_wrapper_1,  0x8E);
-   idt_set_handler(1,  int_wrapper_2,  0x8E);
-   idt_set_handler(2,  int_wrapper_3,  0x8E);
-   idt_set_handler(3,  int_wrapper_4,  0x8E);
-   idt_set_handler(4,  int_wrapper_5,  0x8E);
-   idt_set_handler(5,  int_wrapper_6,  0x8E);
-   idt_set_handler(6,  int_wrapper_7,  0x8E);
-   idt_set_handler(7,  int_wrapper_8,  0x8E);
-   idt_set_handler(8,  int_wrapper_9,  0x8F); //
-   idt_set_handler(9,  int_wrapper_9,  0x8E);
-   idt_set_handler(10, int_wrapper_10, 0x8F); //
-   idt_set_handler(11, int_wrapper_11, 0x8F); //
-   idt_set_handler(12, int_wrapper_12, 0x8F); //
-   idt_set_handler(13, int_wrapper_13, 0x8F); //
-   idt_set_handler(14, int_wrapper_14, 0x8F); //
-   idt_set_handler(16, int_wrapper_16, 0x8E);
-   idt_set_handler(17, int_wrapper_17, 0x8F); //
-   idt_set_handler(18, int_wrapper_18, 0x8E);
-   idt_set_handler(19, int_wrapper_19, 0x8E);
-   idt_set_handler(20, int_wrapper_20, 0x8E);
-   idt_set_handler(21, int_wrapper_21, 0x8E);
+   // idt_set_handler(0,  int_wrapper_1,  0x8E);
+   // idt_set_handler(1,  int_wrapper_2,  0x8E);
+   // idt_set_handler(2,  int_wrapper_3,  0x8E);
+   // idt_set_handler(3,  int_wrapper_4,  0x8E);
+   // idt_set_handler(4,  int_wrapper_5,  0x8E);
+   // idt_set_handler(5,  int_wrapper_6,  0x8E);
+   // idt_set_handler(6,  int_wrapper_7,  0x8E);
+   // idt_set_handler(7,  int_wrapper_8,  0x8E);
+   // idt_set_handler(8,  int_wrapper_9,  0x8F); //
+   // idt_set_handler(9,  int_wrapper_9,  0x8E);
+   // idt_set_handler(10, int_wrapper_10, 0x8F); //
+   // idt_set_handler(11, int_wrapper_11, 0x8F); //
+   // idt_set_handler(12, int_wrapper_12, 0x8F); //
+   // idt_set_handler(13, int_wrapper_13, 0x8F); //
+   // idt_set_handler(14, int_wrapper_14, 0x8F); //
+   // idt_set_handler(16, int_wrapper_16, 0x8E);
+   // idt_set_handler(17, int_wrapper_17, 0x8F); //
+   // idt_set_handler(18, int_wrapper_18, 0x8E);
+   // idt_set_handler(19, int_wrapper_19, 0x8E);
+   // idt_set_handler(20, int_wrapper_20, 0x8E);
+   // idt_set_handler(21, int_wrapper_21, 0x8E);
 
 
    __asm__ volatile("lidt %0" :: "m"(idtr));          // load the new IDT 
@@ -241,9 +251,9 @@ void init_pic(void) {
    pic_remap(0x20, 0x28);
 
    // setup hardware interrupt handlers
-   idt_set_handler(0x20, int_wrapper_32, 0x8E);
+   // idt_set_handler(0x20, int_wrapper_32, 0x8E);
    for (int vector = 0x21; vector < 0x29; vector++) {
-      idt_set_handler(vector, generic_interrupt_handler, 0x8E);
+      idt_set_handler(vector, all_interrupts_handler, 0x8E);
    }
 
    // disable/mask all the hardware interrupts right now.

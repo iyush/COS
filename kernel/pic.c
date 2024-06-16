@@ -69,8 +69,8 @@ void pic_mask_all_interrupts(void) {
    outb(PIC_SLAVE_DATA, 0xff);
 }
 
-void pic_send_end_of_interrupt(uint16_t command_port) {
+void pic_send_end_of_interrupt() {
    // set bit 5 of OCW 2
-   outb(command_port, (1<<5));
+   outb(PIC_MASTER_COMMAND, (1<<5));
 }
 #endif
