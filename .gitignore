@@ -1,6 +1,7 @@
 build
 toolchain/build
 toolchain/src
+limine
 
 *.o
 *.elf

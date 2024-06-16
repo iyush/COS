@@ -1,11 +1,13 @@
 global start
+global p4_table
 global MULTIBOOT_TAG_PTR
 extern c_start
-extern pic_send_end_of_interrupt
+extern all_interrupts_handler
 
 section .text
 bits 32
 start:
+  
   ;; We are doing identity mapping here
   ;; p4[0] -> p3[0]
   mov eax, p3_table
@@ -31,6 +33,10 @@ start:
                                 ; 2 MiB => 1 GiB of pageable memory
   jne .map_p2_table
 
+  ;; Higher half
+  ;; -------------
+  mov eax, [p4_table]
+  mov [p4_table + 511 * 8], eax
 
   ;; Now we are enabling pages
   ;; --------------------------
@@ -44,13 +50,13 @@ start:
   or eax, 1 << 5
   mov cr4, eax
 
-  ;; 3. Setting long mode bit
+  ;; 4. Setting long mode bit
   mov ecx, 0xC0000080
   rdmsr
   or eax, 1 << 8
   wrmsr
 
-  ;; 4. Enable Paging
+  ;; 5. Enable Paging
   mov eax, cr0
   or eax, 1 << 31
   or eax, 1 << 16
@@ -85,6 +91,8 @@ p2_table:
 section .bss
 MULTIBOOT_TAG_PTR:
   resb 64
+k_stack:
+  resb 1024 * 1024
 
 section .rodata
 gdt64:
@@ -105,11 +113,52 @@ regs:
 section .text
 bits 64
 
-%macro INTERRUPT_WRAPPER 2
+higher_half_page:
+  xchg bx, bx
+  mov eax, 0
+  mov dword [p4_table], eax
+
+  mov rax, cr3
+  mov cr3, rax
+
+  ;; reinitialize the gdt
+  ;; load gdt
+  ;; mov rax, 0xffffff8000000000
+  ;; add rax, gdt64.pointer
+
+  ;; lgdt [rax]
+
+  ;; mov rax, 0xffffff8000000000
+  ;; add rax, gdt64.data
+  ;; ;; update selectors
+  ;; ;mov ax, eax                ; kinda casting to 16 bit as segment registers are 16 bit
+  ;; mov ss, ax                 ; stack segment register
+  ;; mov ds, ax                 ; data segment register
+  ;; mov es, ax                 ; extra segment register
+
+  ;; reinitialize the stack
+  mov rax, 0xffffff8000000000
+  add rax, k_stack
+  mov rsp, rax
+  push 123
+
+  mov ebp, 0
+
+  call c_start
+  hlt
+
+long_mode_start:
+  ;; 64 bit mode already!!
+  mov rax, 0xffffff8000000000
+  add rax, higher_half_page
+  jmp rax
+
+
+%macro INTERRUPT_WRAPPER 1
 global int_wrapper_%1
-extern %2
 int_wrapper_%1:
   ;; this should be in opposite order of struct regs
+  push %1
   pushfq
   push r15
   push r14
@@ -136,7 +185,7 @@ int_wrapper_%1:
 
   ;; here we go.............
   cld
-  call %2
+  call all_interrupts_handler
 
   pop rax
   pop rbx
@@ -155,46 +204,35 @@ int_wrapper_%1:
   pop r14
   pop r15
   popfq
-  ; pop rip
 
-  ; pop cs
-  ; pop ds
-  ; pop ss
-  ; pop fs
-  ; pop gs
-  mov rax, %1
-  ;; call pic_send_end_of_interrupt
+  ;; clean up the stack due to the interrupt number
+  add rsp, 8
+
   iretq
 %endmacro
 
-long_mode_start:
-  ;; 64 bit mode already!!
-  mov qword [MULTIBOOT_TAG_PTR], rbx
-  call c_start
 
-  hlt
-
-INTERRUPT_WRAPPER 0,  divide_error                 
-INTERRUPT_WRAPPER 1,  debug                        
-INTERRUPT_WRAPPER 2,  nmi_interrupt                
-INTERRUPT_WRAPPER 3,  breakpoint                   
-INTERRUPT_WRAPPER 4,  overflow                     
-INTERRUPT_WRAPPER 5,  bound_range_exceeded         
-INTERRUPT_WRAPPER 6,  invalid_opcode               
-INTERRUPT_WRAPPER 7,  device_not_available         
-INTERRUPT_WRAPPER 8,  double_fault                 
-INTERRUPT_WRAPPER 9,  co_processor_segment_overrun 
-INTERRUPT_WRAPPER 10, invalid_tss                  
-INTERRUPT_WRAPPER 11, segment_not_present          
-INTERRUPT_WRAPPER 12, stack_segment_fault          
-INTERRUPT_WRAPPER 13, general_protection           
-INTERRUPT_WRAPPER 14, page_fault                   
-INTERRUPT_WRAPPER 16, floating_point_error         
-INTERRUPT_WRAPPER 17, alignment_check              
-INTERRUPT_WRAPPER 18, machine_check                
-INTERRUPT_WRAPPER 19, simd_floating_point_exception
-INTERRUPT_WRAPPER 20, virtualization_exception 
-INTERRUPT_WRAPPER 21, control_protection_exception
+INTERRUPT_WRAPPER 0
+INTERRUPT_WRAPPER 1
+INTERRUPT_WRAPPER 2
+INTERRUPT_WRAPPER 3
+INTERRUPT_WRAPPER 4
+INTERRUPT_WRAPPER 5
+INTERRUPT_WRAPPER 6
+INTERRUPT_WRAPPER 7
+INTERRUPT_WRAPPER 8
+INTERRUPT_WRAPPER 9
+INTERRUPT_WRAPPER 10
+INTERRUPT_WRAPPER 11
+INTERRUPT_WRAPPER 12
+INTERRUPT_WRAPPER 13
+INTERRUPT_WRAPPER 14
+INTERRUPT_WRAPPER 16
+INTERRUPT_WRAPPER 17
+INTERRUPT_WRAPPER 18
+INTERRUPT_WRAPPER 19
+INTERRUPT_WRAPPER 20
+INTERRUPT_WRAPPER 21
 
 ;; hardware interrupts
-INTERRUPT_WRAPPER 32, timer
+INTERRUPT_WRAPPER 32
