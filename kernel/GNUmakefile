@@ -92,6 +92,10 @@ override HEADER_DEPS := $(addprefix obj/,$(CFILES:.c=.c.d) $(ASFILES:.S=.S.d))
 .PHONY: all
 all: bin/$(KERNEL)
 
+.PHONY: gdb
+gdb: bin/$(KERNEL)
+	gdb bin/$(KERNEL) -x init.gdb
+
 src/limine.h:
 	curl -Lo $@ https://github.com/limine-bootloader/limine/raw/trunk/limine.h
 
