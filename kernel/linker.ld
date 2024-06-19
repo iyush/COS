@@ -23,6 +23,8 @@ SECTIONS
     /* that is the beginning of the region. */
     . = 0xffffffff80000000;
 
+    _KERNEL_START = .;
+
     .text : {
         *(.text .text.*)
     } :text
@@ -70,4 +72,5 @@ SECTIONS
         *(.note .note.*)
         *(.interp)
     }
+    _KERNEL_END = .;
 }
