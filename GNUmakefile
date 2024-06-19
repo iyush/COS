@@ -21,7 +21,11 @@ all-hdd: $(IMAGE_NAME).hdd
 
 .PHONY: run
 run: $(IMAGE_NAME).iso
-	qemu-system-x86_64 -M q35 -m 2G -cdrom $(IMAGE_NAME).iso -boot d -serial stdio 
+	qemu-system-x86_64 -m 2G -cdrom $(IMAGE_NAME).iso -boot d -serial stdio
+
+.PHONY: clean
+debug: 
+	qemu-system-x86_64 -m 2G -cdrom $(IMAGE_NAME).iso -boot d -serial stdio -s -S
 
 .PHONY: bochs
 bochs: $(IMAGE_NAME).iso
@@ -85,6 +89,11 @@ $(IMAGE_NAME).hdd: limine/limine kernel
 clean:
 	rm -rf iso_root $(IMAGE_NAME).iso $(IMAGE_NAME).hdd
 	$(MAKE) -C kernel clean
+
+.PHONY: clean
+gdb: 
+	$(MAKE) -C kernel gdb
+
 
 .PHONY: distclean
 distclean: clean
