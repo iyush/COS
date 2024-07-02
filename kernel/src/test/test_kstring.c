@@ -4,13 +4,13 @@
 #include "../kio.h"
 #include <stdarg.h>
 
-#define ASSERT_EQ(a, b)\
+#define TEST_ASSERT_EQ(a, b)\
    if (a != b) {\
       kprint("[%s:%d] Failed equality for expression %s == %s \n\twhere, lhs = %d and rhs = %d\n", __FILE__, __LINE__, #a, #b, a, b);\
       test_failed++;\
    }
 
-#define ASSERT_EQ_STR(a, b)\
+#define TEST_ASSERT_EQ_STR(a, b)\
    if (strcmp(a, b) != 0) {\
       kprint("[%s:%d] Failed string equality %s != %s\n", __FILE__, __LINE__, a, b);\
       test_failed++;\
@@ -18,24 +18,24 @@
 
 int test_strlen() {
    int test_failed = 0;
-   ASSERT_EQ(strlen("A"), 1);
-   ASSERT_EQ(strlen("AB"), 2);
-   ASSERT_EQ(strlen("ABC"), 3);
-   ASSERT_EQ(strlen("ABAB"), 4);
-   ASSERT_EQ(strlen(""), 0);
+   TEST_ASSERT_EQ(strlen("A"), 1);
+   TEST_ASSERT_EQ(strlen("AB"), 2);
+   TEST_ASSERT_EQ(strlen("ABC"), 3);
+   TEST_ASSERT_EQ(strlen("ABAB"), 4);
+   TEST_ASSERT_EQ(strlen(""), 0);
 
    return test_failed;
 }
 
 int test_strcmp() {
    int test_failed = 0;
-   ASSERT_EQ(strcmp("ABA", "ABA"), 0);
-   ASSERT_EQ(strcmp("ABZ", "ABA"), 1);
-   ASSERT_EQ(strcmp("ABA", "ABZ"), -1);
-   ASSERT_EQ(strcmp("AB", "ABZ"), -1);
-   ASSERT_EQ(strcmp("ABZ", "AB"), 1);
-   ASSERT_EQ(strcmp("", ""), 0);
-   ASSERT_EQ(strcmp("", ""), 0);
+   TEST_ASSERT_EQ(strcmp("ABA", "ABA"), 0);
+   TEST_ASSERT_EQ(strcmp("ABZ", "ABA"), 1);
+   TEST_ASSERT_EQ(strcmp("ABA", "ABZ"), -1);
+   TEST_ASSERT_EQ(strcmp("AB", "ABZ"), -1);
+   TEST_ASSERT_EQ(strcmp("ABZ", "AB"), 1);
+   TEST_ASSERT_EQ(strcmp("", ""), 0);
+   TEST_ASSERT_EQ(strcmp("", ""), 0);
 
    return test_failed;
 }
@@ -62,44 +62,44 @@ int test_kvstringf() {
 
    char buffer[256] = {0};
    test_s(buffer, "%c", 'c');
-   ASSERT_EQ_STR(buffer, "c");
+   TEST_ASSERT_EQ_STR(buffer, "c");
 
    set_buffer(buffer, 0);
    test_s(buffer, "%d", 123123123);
-   ASSERT_EQ_STR(buffer, "123123123");
+   TEST_ASSERT_EQ_STR(buffer, "123123123");
 
    set_buffer(buffer, 0);
    test_s(buffer, "%x", 0xdeadbeef);
-   ASSERT_EQ_STR(buffer, "deadbeef");
+   TEST_ASSERT_EQ_STR(buffer, "deadbeef");
 
    test_s(buffer, "%x", 0b11011110101011011011111011101111);
-   ASSERT_EQ_STR(buffer, "deadbeef");
+   TEST_ASSERT_EQ_STR(buffer, "deadbeef");
 
    test_s(buffer, "%b", 0xdeadbeef);
-   ASSERT_EQ_STR(buffer, "11011110101011011011111011101111");
+   TEST_ASSERT_EQ_STR(buffer, "11011110101011011011111011101111");
 
    set_buffer(buffer, 0);
    test_s(buffer, "%lx", 0xdeadbeefdeadbeef);
-   ASSERT_EQ_STR(buffer, "deadbeefdeadbeef");
+   TEST_ASSERT_EQ_STR(buffer, "deadbeefdeadbeef");
 
     unsigned int * x = (unsigned int * )0xdeadbeefdeadbeef;
     test_s(buffer, "%p", x);
-    ASSERT_EQ_STR(buffer, "0xdeadbeefdeadbeef");
+    TEST_ASSERT_EQ_STR(buffer, "0xdeadbeefdeadbeef");
 
    set_buffer(buffer, 0);
    test_s(buffer, "%s", "Hello world");
-   ASSERT_EQ_STR(buffer, "Hello world");
+   TEST_ASSERT_EQ_STR(buffer, "Hello world");
 
    set_buffer(buffer, 0);
    test_s(buffer, "%%");
-   ASSERT_EQ_STR(buffer, "%");
+   TEST_ASSERT_EQ_STR(buffer, "%");
 
    set_buffer(buffer, 0);
    test_s(buffer, "%s", "");
-   ASSERT_EQ_STR(buffer, "");
+   TEST_ASSERT_EQ_STR(buffer, "");
 
    test_s(buffer, "(%s) and char: (%c)", "Hello", 'c');
-   ASSERT_EQ_STR(buffer, "(Hello) and char: (c)");
+   TEST_ASSERT_EQ_STR(buffer, "(Hello) and char: (c)");
     
     return test_failed;
 

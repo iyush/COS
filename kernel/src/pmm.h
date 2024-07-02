@@ -7,6 +7,8 @@
 #define PMM_BLOCK_SIZE      4096 // bytes
 #define PMM_BLOCK_ALIGN     PMM_BLOCK_SIZE
 
+#include <assert.h>
+
 
 struct mem_bitmap {
     uint64_t * data;
@@ -100,13 +102,13 @@ struct pte {
 struct mem_bitmap bitmap = { 0 };
 
 // maximum size of the physical memory (RAM)
-static uint32_t   pmm_memory_size = 0;
+// static uint32_t   pmm_memory_size = 0;
 // number of used blocks
-static uint32_t   pmm_used_blocks = 0;
+// static uint32_t   pmm_used_blocks = 0;
 // maximum number of blocks, this will be pmm_memory_size / PMM_BLOCK_SIZE
-static uint32_t   pmm_max_blocks  = 0;
+// static uint32_t   pmm_max_blocks  = 0;
 // memory map bit array, where each bit indicates whether a block is free or not.
-static uint32_t * pmm_memory_map = 0;
+// static uint32_t * pmm_memory_map = 0;
 
 
 struct mem_mmap {
@@ -186,6 +188,49 @@ void * pmm_alloc_block() {
 
 void pmm_free_block(void *) {
 
+}
+
+
+uint64_t _pmm_cr4() {
+   uint64_t cr4;
+
+    asm __volatile__ (
+            "mov %%cr4, %0\n"
+            :"=r"(cr4)
+            :
+            :
+          );
+
+    return cr4;
+}
+
+uint64_t _pmm_cr3() {
+   uint64_t cr3;
+
+    asm __volatile__ (
+            "mov %%cr3, %0\n"
+            :"=r"(cr3)
+            :
+            :
+          );
+
+    return cr3;
+}
+
+
+#define CR4_PCICDE (1 << 17)
+
+bool pmm_is_pcicde() {
+   return (_pmm_cr4() & CR4_PCICDE);
+}
+
+void pmm_init() {
+   ASSERT_EQ(pmm_is_pcicde(), 0); // we expect cr4.pcicde == 0 after this.
+   uint64_t cr3 = _pmm_cr3();
+
+   uint64_t * pm4_table_address = cr3 >> 11;
+
+   ksp("pm4_table %lx\n", pm4_table_address);
 }
 
 /*
