@@ -32,6 +32,8 @@ static volatile struct limine_framebuffer_request framebuffer_request = {
 };
 __attribute__((used, section(".requests")))
 static volatile struct limine_memmap_request memmap_request = LIMINE_MEMMAP_REQUEST;
+__attribute__((used, section(".requests")))
+static volatile struct limine_kernel_address_request kernel_address_request = LIMINE_KERNEL_ADDRESS_REQUEST;
 
 // Finally, define the start and end markers for the Limine requests.
 // These can also be moved anywhere, to any .c file, as seen fit.
@@ -164,14 +166,26 @@ void _start(void) {
             biggest_gap_length
     );
 
+    if (kernel_address_request.response == NULL) {
+        ksp("kernel address request is not known\n");
+        hcf();
+    }
+
+    ksp("kernel physical start: %lx\n", kernel_address_request.response->physical_base);
+    ksp("kernel virtual start: %lx\n", kernel_address_request.response->virtual_base);
+
     /*
      * TODO
     Since biggest_gap_base is a physical_addr we need to get the virt address.
-       1. Parse the current page table
-       2. Get the entry that the physical address "biggest_gap_base" falls in.
-       3. Calculate offset from physical address to physical start -> m_offset;
-       4. Use of the offset and virtual start to calculate the virtual address;
+       1. Get the kernel base physical address (PMA)
+       1. Get the kernel base virtual address (VMA)
+       2. virtual_address = VMA + (biggest_gap_base + PMA)
     */
+
+    uint64_t v_biggest_gap_base = kernel_address_request.response->virtual_base + ( biggest_gap_base - kernel_address_request.response->physical_base );
+    ksp("v_biggest_gap_base: %lx\n", v_biggest_gap_base);
+    ksp("p_biggest_gap_base: %lx\n", biggest_gap_base);
+
 
     /*
      * After getting the virtual address, create a bitmap at that address which tracks all the memory.
@@ -200,15 +214,15 @@ void _start(void) {
     init_idt();
     ksp("IDT is initted!\n");
 
+    pmm_init();
+
     // add to the first usuable map.
-    bitmap.data = (uint64_t *)biggest_gap_base;
-    bitmap.size = (number_of_pages >> 6);
+    // bitmap.data = (uint64_t *)biggest_gap_base;
+    // bitmap.size = (number_of_pages >> 6);
 
-    for (uint64_t i = 0; i < bitmap.size; i++) {
-        bitmap.data[i] = 0;
-    }
-
-    allocate_one_page(bitmap);
+    // for (uint64_t i = 0; i < bitmap.size; i++) {
+    //     bitmap.data[i] = 0;
+    // }
 
     // We're done, just hang...
     hcf();
