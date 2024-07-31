@@ -120,21 +120,26 @@ struct mem_mmap {
 };
 
 void get_memory_map(struct mem_mmap* mmap) {
+    (void)mmap;
     // struct pml4 pml4 = (cr3);
 }
 
 
 // functions that manipulate the bit array
 void pmm_mmap_set(int bit) {
+    (void)bit;
    //pmm_memory_map[bit / 32] |= 1 << (bit % 32);
 }
 
 void pmm_mmap_unset(int bit) {
+    (void) bit;
    //pmm_memory_map[bit / 32] &= ~(1 << (bit % 32));
 }
 
 bool pmm_mmap_test(int bit) {
+    (void) bit;
    //return pmm_memory_map[bit / 32] & (1 << (bit % 32));
+   return 1;
 }
 
 uint8_t * allocate_one_page(struct mem_bitmap bmp) {
@@ -180,13 +185,16 @@ int pmm_mmap_first_free() {
       }
    }
    */
+  return 1;
 }
 
 void * pmm_alloc_block() {
+    return 0;
 }
 
 
-void pmm_free_block(void *) {
+void pmm_free_block(void) {
+
 
 }
 
@@ -228,9 +236,10 @@ void pmm_init() {
    ASSERT_EQ(pmm_is_pcicde(), 0); // we expect cr4.pcicde == 0 after this.
    uint64_t cr3 = _pmm_cr3();
 
-   uint64_t * pm4_table_address = cr3 >> 11;
+   uint64_t * pm4_table_address = (uint64_t *)(cr3 >> 11);
 
-   ksp("pm4_table %lx\n", pm4_table_address);
+    // NOTE: this might probably fail?
+   ksp("pm4_table %ln\n", pm4_table_address);
 }
 
 /*
