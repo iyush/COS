@@ -9,6 +9,13 @@
 #include <stdint.h>
 #include <pmm.h>
 
+
+#include "./idt.c"
+#include "./pic.c"
+#include "./kio.c"
+#include "./io.c"
+#include "./kstring.c"
+
 extern uint64_t _KERNEL_START;
 extern uint64_t _KERNEL_END;
 // extern uint64_t * kernel_end;
@@ -31,9 +38,9 @@ static volatile struct limine_framebuffer_request framebuffer_request = {
     .revision = 0
 };
 __attribute__((used, section(".requests")))
-static volatile struct limine_memmap_request memmap_request = LIMINE_MEMMAP_REQUEST;
+static volatile struct limine_memmap_request memmap_request = {LIMINE_MEMMAP_REQUEST};
 __attribute__((used, section(".requests")))
-static volatile struct limine_kernel_address_request kernel_address_request = LIMINE_KERNEL_ADDRESS_REQUEST;
+static volatile struct limine_kernel_address_request kernel_address_request = {LIMINE_KERNEL_ADDRESS_REQUEST};
 
 // Finally, define the start and end markers for the Limine requests.
 // These can also be moved anywhere, to any .c file, as seen fit.

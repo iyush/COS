@@ -45,6 +45,7 @@ $(eval $(call DEFAULT_VAR,KLDFLAGS,$(DEFAULT_KLDFLAGS)))
 override KCFLAGS += \
     -Wall \
     -Wextra \
+    -Wno-missing-field-initializers \
     -std=gnu11 \
     -ffreestanding \
     -fno-stack-protector \
