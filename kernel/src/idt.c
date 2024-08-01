@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include "./kio.h"
-#include "./pic.h"
+#include "./pic.c"
 
 typedef struct {
    uint16_t offset_1;        // offset bits 0..15
@@ -87,20 +87,20 @@ struct interrupt_frame
 //static int i = 0;
 
 struct regs timer(struct regs r) { 
-   dmpregs(r);
+   ksp("timer!\n");
    pic_send_end_of_interrupt();
    return r;
 } // 21
 
 void all_interrupts_handler(struct regs r)
 {
-   ksp("we received an generic interrupt %ld\n", r.interrupt_number);
-   dmpregs(r);
    switch (r.interrupt_number) {
       case 32:
          timer(r);
          break;
       default:
+         ksp("we received an generic interrupt %ld\n", r.interrupt_number);
+         dmpregs(r);
          while(1) {}
    };
 }
@@ -114,6 +114,7 @@ void all_interrupts_handler(struct regs r)
 //    while (1) {}
 // }
 
+extern void int_wrapper_0();
 extern void int_wrapper_1();
 extern void int_wrapper_2();
 extern void int_wrapper_3();
@@ -138,6 +139,7 @@ extern void int_wrapper_21();
 
 // hardware interrupts
 extern __attribute__((interrupt)) void int_wrapper_32(struct interrupt_frame*, uint64_t);
+extern __attribute__((interrupt)) void int_wrapper_33(struct interrupt_frame*, uint64_t);
 
 
 void divide_error                 (struct interrupt_frame* iframe             ) { (void)iframe; ksp("divide error");                  halt(); } // 0
@@ -182,15 +184,15 @@ void init_idt(void) {
    idtr.limit = (uint16_t)sizeof(idt_entry_64_t) * 256;
    idtr.base = (uint64_t)&idt[0];
 
-   idt_set_handler(0,  int_wrapper_1,  0x8E);
-   idt_set_handler(1,  int_wrapper_2,  0x8E);
-   idt_set_handler(2,  int_wrapper_3,  0x8E);
-   idt_set_handler(3,  int_wrapper_4,  0x8E);
-   idt_set_handler(4,  int_wrapper_5,  0x8E);
-   idt_set_handler(5,  int_wrapper_6,  0x8E);
-   idt_set_handler(6,  int_wrapper_7,  0x8E);
-   idt_set_handler(7,  int_wrapper_8,  0x8E);
-   idt_set_handler(8,  int_wrapper_9,  0x8F); //
+   idt_set_handler(0,  int_wrapper_0,  0x8E);
+   idt_set_handler(1,  int_wrapper_1,  0x8E);
+   idt_set_handler(2,  int_wrapper_2,  0x8E);
+   idt_set_handler(3,  int_wrapper_3,  0x8E);
+   idt_set_handler(4,  int_wrapper_4,  0x8E);
+   idt_set_handler(5,  int_wrapper_5,  0x8E);
+   idt_set_handler(6,  int_wrapper_6,  0x8E);
+   idt_set_handler(7,  int_wrapper_7,  0x8E);
+   idt_set_handler(8,  int_wrapper_8,  0x8F); //
    idt_set_handler(9,  int_wrapper_9,  0x8E);
    idt_set_handler(10, int_wrapper_10, 0x8F); //
    idt_set_handler(11, int_wrapper_11, 0x8F); //
@@ -207,9 +209,21 @@ void init_idt(void) {
     asm volatile ("xchgw %bx, %bx");
    __asm__ volatile("lidt %0" :: "m"(idtr));          // load the new IDT 
 
-
+ int flags = 0;
    init_pic();
    __asm__ volatile("sti");                           // set the interrupt flag
+  
+   __asm__ volatile("pushf\n\t"
+                 "pop %%rax\n\t"
+                 "and $0x200, %%rax"
+                 : "=a" (flags));
+
+   if (flags) {
+    ksp("Interrupts are enabled\n");
+} else {
+    ksp("Interrupts are still disabled\n");
+}
+   
 }
 
 void init_pic(void) {
@@ -219,13 +233,14 @@ void init_pic(void) {
 
    // setup hardware interrupt handlers
    idt_set_handler(0x20, int_wrapper_32, 0x8E);
-   for (int vector = 0x21; vector < 0x29; vector++) {
+   idt_set_handler(0x21, int_wrapper_33, 0x8E);
+   for (int vector = 0x22; vector < 0x29; vector++) {
       idt_set_handler(vector, all_interrupts_handler, 0x8E);
    }
 
    // disable/mask all the hardware interrupts right now.
    // until we implement keyboard drivers.
-   pic_mask_all_interrupts();
+   // pic_mask_all_interrupts();
 }
 
 #endif

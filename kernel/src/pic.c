@@ -61,6 +61,10 @@ void pic_remap(uint8_t master_offset, uint8_t slave_offset) {
    // restore the saved state or 'masks'
    outb(PIC_MASTER_DATA, master_data); io_wait();
    outb(PIC_SLAVE_DATA,  slave_data); io_wait();
+
+   // Important!
+   outb(PIC_MASTER_DATA, inb(PIC_MASTER_DATA) & ~(1 << 0));  // Unmask IRQ 0 (Timer) 
+   outb(PIC_MASTER_DATA, inb(PIC_MASTER_DATA) & ~(1 << 1));  // Unmask IRQ 1 (Keyboard)
 }
 
 // 'masking' here means disabling by setting the bit to be 1.
