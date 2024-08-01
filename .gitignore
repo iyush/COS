@@ -8,3 +8,4 @@ limine
 *.bin
 *.iso
 isofiles/
+iso_root/
