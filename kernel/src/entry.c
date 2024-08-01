@@ -220,8 +220,17 @@ void _start(void) {
 
     init_idt();
     ksp("IDT is initted!\n");
+    //   int i = 1;
+    //  int j = 0;
+    // ksp("div by zero %d!\n", i / j);
+        while(1)
+    {
+
+    }
 
     pmm_init();
+
+
 
     // add to the first usuable map.
     // bitmap.data = (uint64_t *)biggest_gap_base;
