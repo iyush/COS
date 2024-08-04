@@ -3,6 +3,7 @@
 // Physical Memory Manager
 //
 
+#define PMM_BITMAP_ADDRESS  0xffffffff0000000
 #define PMM_BLOCKS_PER_BYTE 8
 #define PMM_BLOCK_SIZE      4096 // bytes
 #define PMM_BLOCK_ALIGN     PMM_BLOCK_SIZE
@@ -195,7 +196,6 @@ void * pmm_alloc_block() {
 
 void pmm_free_block(void) {
 
-
 }
 
 
@@ -232,18 +232,23 @@ bool pmm_is_pcicde() {
    return (_pmm_cr4() & CR4_PCICDE);
 }
 
-void pmm_init() {
-   ASSERT_EQ(pmm_is_pcicde(), 0); // we expect cr4.pcicde == 0 after this.
-   uint64_t cr3 = _pmm_cr3();
 
-   uint64_t * pm4_table_address = (uint64_t *)(cr3 >> 11);
+// static uint64_t p4_table[512] __attribute__((aligned (4096))); // pml4
+// static uint64_t p3_table[512] __attribute__((aligned (4096))); // pdpte
+// static uint64_t p2_table[512] __attribute__((aligned (4096))); // pd
+// static uint64_t p1_table[512] __attribute__((aligned (4096))); // pt
 
-    // NOTE: this might probably fail?
-   ksp("pm4_table %ln\n", pm4_table_address);
-}
+#define HIGHER_HALF_BASE 0xffffffff80000000
+#define BITMAP_ADDR 0xffffffffA0000000
+#define PAGE_PRESENT (1 << 0)
+#define PAGE_WRITABLE (1 << 1)
+#define PAGE_HUGE (1 << 7)
+
+void pmm_init(struct limine_memmap_request memmap_request, struct limine_hhdm_request hhdm_request, struct limine_kernel_address_request kernel_address_request);
+
 
 /*
-void dmp_page_table(struct pml4* p4_t) {
+void dmp_page_table(struct pml4* p4_t) { 0xffffffff80006000 0xffffffff80007000 0xffffffff80008000 0xffffffff80009000
     ksp("P4 TABLE 0x%lx\n",    (uint64_t)p4_t);
     ksp("\t p: %d\n",       p4_t->p);
     ksp("\t rw: %d\n",      p4_t->rw);
