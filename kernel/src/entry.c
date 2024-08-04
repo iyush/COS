@@ -15,6 +15,7 @@
 #include "./io.c"
 #include "./kstring.c"
 #include "pmm.c"
+#include "vmm.c"
 
 extern uint64_t _KERNEL_START;
 extern uint64_t _KERNEL_END;
@@ -85,15 +86,16 @@ void _start(void)
 
     // Fetch the first framebuffer.
     struct limine_framebuffer *framebuffer = framebuffer_request.response->framebuffers[0];
+    volatile uint32_t *fb_ptr = framebuffer->address;
 
     // Note: we assume the framebuffer model is RGB with 32-bit pixels.
     for (size_t i = 0; i < 100; i++)
     {
-        volatile uint32_t *fb_ptr = framebuffer->address;
         fb_ptr[i * (framebuffer->pitch / 4) + i] = 0xffffff;
     }
 
     pmm_init(memmap_request, hhdm_request, kernel_address_request);
+    vmm_init(hhdm_request);
 
     hcf();
 }
