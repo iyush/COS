@@ -4,6 +4,9 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+uint8_t* bmp;
+uint64_t bmp_size;
+
 
 // GCC and Clang reserve the right to generate calls to the following
 // 4 functions even if they are not directly called.
@@ -75,9 +78,9 @@ int memcmp(const void *s1, const void *s2, size_t n)
     return 0;
 }
 
-void bmp_set_free(uint8_t *bmp, uint64_t page_ptr, uint64_t n_pages)
+void bmp_set_free(uint64_t page_ptr, uint64_t n_pages)
 {
-    uint64_t page_start = page_ptr / 4096; // doint a + here, as we are freeing, we don't want to free the prev block if it was hold by someone.
+    uint64_t page_start = page_ptr / 4096; 
 
     uint64_t page = 0;
     uint64_t page_big_index = 0;
@@ -90,6 +93,24 @@ void bmp_set_free(uint8_t *bmp, uint64_t page_ptr, uint64_t n_pages)
         page_sma_index = (page % 8);
 
         bmp[page_big_index] = bmp[page_big_index] & ~(1 << page_sma_index);
+    }
+}
+
+void bmp_set_used(void* page_ptr, uint64_t n_pages)
+{
+    uint64_t page_start = (uint64_t)page_ptr / 4096;
+
+    uint64_t page = 0;
+    uint64_t page_big_index = 0;
+    uint64_t page_sma_index = 0;
+
+    for (uint64_t i = 0; i < n_pages; i++)
+    {
+        page = page_start + i;
+        page_big_index = (page / 8);
+        page_sma_index = (page % 8);
+
+        bmp[page_big_index] = bmp[page_big_index] | (1 << page_sma_index);
     }
 }
 
@@ -106,7 +127,7 @@ void pmm_init(struct limine_memmap_request memmap_request, struct limine_hhdm_re
         }
     }
 
-    uint64_t bmp_size = ((highest_page_top + 4096) / 4096) / 8;
+    bmp_size = ((highest_page_top + 4096) / 4096) / 8;
     uint64_t biggest_usable_base = 0;
     uint64_t biggest_usable_length = 0;
     for (uint64_t i = 0; i < memmap_request.response->entry_count; i++)
@@ -114,6 +135,8 @@ void pmm_init(struct limine_memmap_request memmap_request, struct limine_hhdm_re
         uint64_t type = memmap_request.response->entries[i]->type;
         uint64_t length = memmap_request.response->entries[i]->length;
         uint64_t base = memmap_request.response->entries[i]->base;
+
+
         if (length > bmp_size && type == LIMINE_MEMMAP_USABLE)
         {
             if (length > biggest_usable_length)
@@ -121,18 +144,18 @@ void pmm_init(struct limine_memmap_request memmap_request, struct limine_hhdm_re
                 biggest_usable_base = base;
                 biggest_usable_length = length;
             }
+            ksp("%lx %lx %ld \n", base, length, type);
         }
     }
 
     ksp("bmp_size %lx can fit in region with base %lx and length %lx\n", bmp_size, biggest_usable_base, biggest_usable_length);
 
-    uint8_t *bmp_base = (uint8_t *)biggest_usable_base + hhdm_request.response->offset;
+    bmp = (uint8_t *)biggest_usable_base + hhdm_request.response->offset;
 
-    ksp("bmp_size: %lx\n", bmp_size);
     ksp("kernel physical start: %lx\n", kernel_address_request.response->physical_base);
     ksp("kernel virtual start: %lx\n", kernel_address_request.response->virtual_base);
 
-    memset(bmp_base, 0xff, bmp_size);
+    memset(bmp, 0xff, bmp_size);
 
     for (uint64_t i = 0; i < memmap_request.response->entry_count; i++)
     {
@@ -145,14 +168,51 @@ void pmm_init(struct limine_memmap_request memmap_request, struct limine_hhdm_re
             // offset as we don't want the bitmap itself to be usable
             if (base == biggest_usable_base)
             {
-                bmp_set_free(bmp_base, base + bmp_size, (length - bmp_size) / 4096);
+                bmp_set_free(base + bmp_size, (length - bmp_size) / 4096);
             }
             else
             {
-                bmp_set_free(bmp_base, base, length / 4096);
+                bmp_set_free(base, length / 4096);
             }
         }
     }
     // for null page.
-    bmp_base[0] = bmp_base[0] & ~(1 << 0);
+    bmp[0] = bmp[0] & ~(1 << 0);
+}
+
+void * pmm_find_free_page(uint64_t n_pages)
+{
+    if (n_pages == 0)
+    {
+        return NULL;
+    }
+
+    uint64_t start_page = 0;
+    uint64_t end_page = 0;
+    
+    for (uint64_t i = 0; i < bmp_size; i++)
+    {
+        for (uint64_t j = 0; j <= 8; j++)
+        {
+            end_page = i * 8 + j;
+            if (((bmp[i] >> j) & 1) == 1)
+            {
+                start_page = end_page;
+            }
+
+            if ((end_page - start_page) > n_pages)
+            {
+                return (void*)((start_page + 1) * 4096);
+            }
+        }
+    }
+
+    return NULL;
+}
+
+void * pmm_alloc_page(uint64_t n_pages)
+{
+    void * ptr = pmm_find_free_page(n_pages);
+    bmp_set_used(ptr, n_pages);
+    return ptr;
 }

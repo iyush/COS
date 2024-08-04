@@ -143,62 +143,6 @@ bool pmm_mmap_test(int bit) {
    return 1;
 }
 
-uint8_t * allocate_one_page(struct mem_bitmap bmp) {
-    uint64_t fnd_i = (uint64_t)(-1);
-    uint64_t fnd_j = (uint64_t)(-1);
-
-    for (uint64_t i = 0; i < bmp.size; i++) {
-        if (bmp.data[i] == 0xffffffffffffffff) continue;
-
-        for (int j = 0; j < 64; j++) {
-            if ((bmp.data[i] & (1 << j)) == 0) {
-                fnd_i = i;
-                fnd_j = j;
-            }
-        }
-    }
-
-    if (fnd_i == (uint64_t)(-1) || fnd_j == (uint64_t)(-1) ) {
-        ksp("Allocate page not found!\n");
-        while (1) {}
-    }
-    bmp.data[fnd_i] |= (1 << fnd_j);
-    return (uint8_t*) (bmp.data + fnd_i * 64 + fnd_j);
-}
-
-
-
-// returns the first index of the first free bit
-int pmm_mmap_first_free() {
-   /*
-   for (uint32_t block = 0; block < pmm_max_blocks; block++) {
-
-      // optimization
-      if (pmm_memory_map[block] == 0xffff_ffff) {
-         continue;
-      }
-
-      for (uint32_t idx = 0; idx < 32; idx++) {
-         int bit = 1 << idx;
-         if (!(pmm_memory_map[block] & bit)) {
-            return block + idx;
-         }
-      }
-   }
-   */
-  return 1;
-}
-
-void * pmm_alloc_block() {
-    return 0;
-}
-
-
-void pmm_free_block(void) {
-
-}
-
-
 uint64_t _pmm_cr4() {
    uint64_t cr4;
 
@@ -212,18 +156,7 @@ uint64_t _pmm_cr4() {
     return cr4;
 }
 
-uint64_t _pmm_cr3() {
-   uint64_t cr3;
 
-    asm __volatile__ (
-            "mov %%cr3, %0\n"
-            :"=r"(cr3)
-            :
-            :
-          );
-
-    return cr3;
-}
 
 
 #define CR4_PCICDE (1 << 17)
@@ -245,6 +178,7 @@ bool pmm_is_pcicde() {
 #define PAGE_HUGE (1 << 7)
 
 void pmm_init(struct limine_memmap_request memmap_request, struct limine_hhdm_request hhdm_request, struct limine_kernel_address_request kernel_address_request);
+void * pmm_alloc_page(uint64_t n_pages);
 
 
 /*
