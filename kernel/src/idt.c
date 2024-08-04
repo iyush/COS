@@ -87,7 +87,7 @@ struct interrupt_frame
 //static int i = 0;
 
 struct regs timer(struct regs r) { 
-   ksp("timer!\n");
+   // ksp("timer!\n");
    pic_send_end_of_interrupt();
    return r;
 } // 21
@@ -95,6 +95,14 @@ struct regs timer(struct regs r) {
 void all_interrupts_handler(struct regs r)
 {
    switch (r.interrupt_number) {
+      case 14:
+         ksp("We got a page fault!\n");
+         uint64_t cr2 = 0;
+         asm volatile("mov %%cr2, %0" : "=r" (cr2));
+         ksp("Page fault happend at address: %lx\n", cr2);
+         dmpregs(r);
+         while(1){}
+         break;
       case 32:
          timer(r);
          break;

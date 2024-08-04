@@ -15,6 +15,7 @@ BINUTILS_VERSION=2.40
 GCC_VERSION=13.1.0
 NASM_VERSION=2.16.03
 XORRISO_VERSION=1.5.6
+BOCHS_VERSION=2.8
 
 
 download() {
@@ -35,17 +36,20 @@ BINUTILS_FILE_PATH=$SRCDIR/binutils-$BINUTILS_VERSION.tar.xz
 GCC_FILE_PATH=$SRCDIR/gcc-$GCC_VERSION.tar.xz
 NASM_FILE_PATH=$SRCDIR/nasm-$NASM_VERSION.tar.xz
 XORRISO_FILE_PATH=$SRCDIR/xorriso-$XORRISO_VERSION.tar.xz
+BOCHS_FILE_PATH=$SRCDIR/bochs-$BOCHS_VERSION.tar.xz
 
-download "https://ftp.gnu.org/gnu/binutils/binutils-$BINUTILS_VERSION.tar.xz"                 $BINUTILS_FILE_PATH
-download "https://ftp.gnu.org/gnu/gcc/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.xz"               $GCC_FILE_PATH
-download "https://www.nasm.us/pub/nasm/releasebuilds/$NASM_VERSION/nasm-$NASM_VERSION.tar.xz" $NASM_FILE_PATH
-download "https://ftp.gnu.org/gnu/xorriso/xorriso-$XORRISO_VERSION.tar.gz"                    $XORRISO_FILE_PATH
+download "https://ftp.gnu.org/gnu/binutils/binutils-$BINUTILS_VERSION.tar.xz"                                       $BINUTILS_FILE_PATH
+download "https://ftp.gnu.org/gnu/gcc/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.xz"                                     $GCC_FILE_PATH
+download "https://www.nasm.us/pub/nasm/releasebuilds/$NASM_VERSION/nasm-$NASM_VERSION.tar.xz"                       $NASM_FILE_PATH
+download "https://ftp.gnu.org/gnu/xorriso/xorriso-$XORRISO_VERSION.tar.gz"                                          $XORRISO_FILE_PATH
+download "https://sourceforge.net/projects/bochs/files/bochs/$BOCHS_VERSION/bochs-$BOCHS_VERSION.tar.gz/download"   $BOCHS_FILE_PATH
 
 # extracting
 tar xf $BINUTILS_FILE_PATH -C $SRCDIR
 tar xf $GCC_FILE_PATH -C $SRCDIR
 tar xf $NASM_FILE_PATH -C $SRCDIR
 tar xf $XORRISO_FILE_PATH -C $SRCDIR
+tar xf $BOCHS_FILE_PATH -C $SRCDIR
 
 
 # building binutils and gcc
@@ -78,5 +82,16 @@ make install
 mkdir -p $BUILDDIR/build-xorriso 
 cd $BUILDDIR/build-xorriso 
 $SRCDIR/xorriso-$XORRISO_VERSION/configure --target=$TARGET --prefix="$PREFIX"
+make
+make install
+
+mkdir -p $BUILDDIR/build-bochs 
+cd $BUILDDIR/build-bochs 
+$SRCDIR/bochs-$BOCHS_VERSION/configure --target=$TARGET --prefix="$PREFIX"  \
+    --with-x11 \
+    --enable-plugins \
+    --enable-debugger \
+    --enable-readline \
+    --enable-idle-hack
 make
 make install
