@@ -17,8 +17,7 @@
 #include "pmm.c"
 #include "vmm.c"
 
-extern uint64_t _KERNEL_START;
-extern uint64_t _KERNEL_END;
+
 // extern uint64_t * kernel_end;
 
 // Set the base revision to 2, this is recommended as this is the latest
@@ -95,7 +94,7 @@ void _start(void)
     }
 
     pmm_init(memmap_request, hhdm_request, kernel_address_request);
-    vmm_init(hhdm_request);
+    vmm_init(hhdm_request, kernel_address_request);
 
     hcf();
 }
