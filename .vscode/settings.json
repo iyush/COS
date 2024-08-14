@@ -4,6 +4,11 @@
         "stdint.h": "c",
         "stddef.h": "c",
         "stdbool.h": "c",
-        "limine.h": "c"
-    }
+        "limine.h": "c",
+        "pmm.h": "c",
+        "kstring.h": "c",
+        "mem.h": "c",
+        "vmm.h": "c"
+    },
+    
 }

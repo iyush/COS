@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include <pmm.h>
 
 uint8_t* bmp;
 uint64_t bmp_size;
@@ -78,56 +79,56 @@ int memcmp(const void *s1, const void *s2, size_t n)
     return 0;
 }
 
-void bmp_set_free(uint64_t page_ptr, uint64_t n_pages)
+void bmp_set_free(uint64_t frame_ptr, uint64_t n_frames)
 {
-    uint64_t page_start = page_ptr / 4096; 
+    uint64_t frame_start = frame_ptr / FRAME_SIZE; 
 
-    uint64_t page = 0;
-    uint64_t page_big_index = 0;
-    uint64_t page_sma_index = 0;
+    uint64_t frame = 0;
+    uint64_t frame_big_index = 0;
+    uint64_t frame_sma_index = 0;
 
-    for (uint64_t i = 0; i < n_pages; i++)
+    for (uint64_t i = 0; i < n_frames; i++)
     {
-        page = page_start + i;
-        page_big_index = (page / 8);
-        page_sma_index = (page % 8);
+        frame = frame_start + i;
+        frame_big_index = (frame / 8);
+        frame_sma_index = (frame % 8);
 
-        bmp[page_big_index] = bmp[page_big_index] & ~(1 << page_sma_index);
+        bmp[frame_big_index] = bmp[frame_big_index] & ~(1 << frame_sma_index);
     }
 }
 
-void bmp_set_used(void* page_ptr, uint64_t n_pages)
+void bmp_set_used(void* frame_ptr, uint64_t n_frames)
 {
-    uint64_t page_start = (uint64_t)page_ptr / 4096;
+    uint64_t frame_start = (uint64_t)frame_ptr / FRAME_SIZE;
 
-    uint64_t page = 0;
-    uint64_t page_big_index = 0;
-    uint64_t page_sma_index = 0;
+    uint64_t frame = 0;
+    uint64_t frame_big_index = 0;
+    uint64_t frame_sma_index = 0;
 
-    for (uint64_t i = 0; i < n_pages; i++)
+    for (uint64_t i = 0; i < n_frames; i++)
     {
-        page = page_start + i;
-        page_big_index = (page / 8);
-        page_sma_index = (page % 8);
+        frame = frame_start + i;
+        frame_big_index = (frame / 8);
+        frame_sma_index = (frame % 8);
 
-        bmp[page_big_index] = bmp[page_big_index] | (1 << page_sma_index);
+        bmp[frame_big_index] = bmp[frame_big_index] | (1 << frame_sma_index);
     }
 }
 
 void pmm_init(struct limine_memmap_request memmap_request, struct limine_hhdm_request hhdm_request, struct limine_kernel_address_request kernel_address_request)
 {
-    uint64_t highest_page_top = 0;
+    uint64_t highest_frame_top = 0;
     for (uint64_t i = 0; i < memmap_request.response->entry_count; i++)
     {
         uint64_t length = memmap_request.response->entries[i]->length;
         uint64_t base = memmap_request.response->entries[i]->base;
-        if (base + length > highest_page_top)
+        if (base + length > highest_frame_top)
         {
-            highest_page_top = base + length;
+            highest_frame_top = base + length;
         }
     }
 
-    bmp_size = ((highest_page_top + 4096) / 4096) / 8;
+    bmp_size = ((highest_frame_top + FRAME_SIZE) / FRAME_SIZE) / 8;
     uint64_t biggest_usable_base = 0;
     uint64_t biggest_usable_length = 0;
     for (uint64_t i = 0; i < memmap_request.response->entry_count; i++)
@@ -168,41 +169,41 @@ void pmm_init(struct limine_memmap_request memmap_request, struct limine_hhdm_re
             // offset as we don't want the bitmap itself to be usable
             if (base == biggest_usable_base)
             {
-                bmp_set_free(base + bmp_size, (length - bmp_size) / 4096);
+                bmp_set_free(base + bmp_size, (length - bmp_size) / FRAME_SIZE);
             }
             else
             {
-                bmp_set_free(base, length / 4096);
+                bmp_set_free(base, length / FRAME_SIZE);
             }
         }
     }
-    // for null page.
+    // for null frame.
     bmp[0] = bmp[0] & ~(1 << 0);
 }
 
-void * pmm_find_free_page(uint64_t n_pages)
+void * pmm_find_free_frame(uint64_t n_frames)
 {
-    if (n_pages == 0)
+    if (n_frames == 0)
     {
         return NULL;
     }
 
-    uint64_t start_page = 0;
-    uint64_t end_page = 0;
+    uint64_t start_frame = 0;
+    uint64_t end_frame = 0;
     
     for (uint64_t i = 0; i < bmp_size; i++)
     {
         for (uint64_t j = 0; j <= 8; j++)
         {
-            end_page = i * 8 + j;
+            end_frame = i * 8 + j;
             if (((bmp[i] >> j) & 1) == 1)
             {
-                start_page = end_page;
+                start_frame = end_frame;
             }
 
-            if ((end_page - start_page) > n_pages)
+            if ((end_frame - start_frame) > n_frames)
             {
-                return (void*)((start_page + 1) * 4096);
+                return (void*)((start_frame + 1) * FRAME_SIZE);
             }
         }
     }
@@ -210,9 +211,14 @@ void * pmm_find_free_page(uint64_t n_pages)
     return NULL;
 }
 
-void * pmm_alloc_page(uint64_t n_pages)
+void * pmm_alloc_frame(uint64_t n_frames)
 {
-    void * ptr = pmm_find_free_page(n_pages);
-    bmp_set_used(ptr, n_pages);
+    void * ptr = pmm_find_free_frame(n_frames);
+    bmp_set_used(ptr, n_frames);
     return ptr;
+}
+
+void pmm_dealloc_frame(void* ptr, uint64_t n_frame)
+{
+    bmp_set_free((uint64_t)ptr, n_frame);
 }
