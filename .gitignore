@@ -3,9 +3,11 @@ toolchain/build
 toolchain/src
 limine
 
+
 *.o
 *.elf
 *.bin
 *.iso
+*.swp
 isofiles/
 iso_root/
