@@ -145,8 +145,18 @@ void pmm_init(struct limine_memmap_request memmap_request, struct limine_hhdm_re
                 biggest_usable_base = base;
                 biggest_usable_length = length;
             }
-            ksp("%lx %lx %ld \n", base, length, type);
         }
+
+        char * type_str = "USABLE";
+        if      (type == LIMINE_MEMMAP_RESERVED)                { type_str = "RESERVED"; } 
+        else if (type == LIMINE_MEMMAP_ACPI_RECLAIMABLE)        { type_str = "ACPI_RECLAIMABLE"; }
+        else if (type == LIMINE_MEMMAP_ACPI_NVS)                { type_str = "ACPI_NVS"; }
+        else if (type == LIMINE_MEMMAP_BAD_MEMORY)              { type_str = "BAD_MEMORY"; }
+        else if (type == LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE)  { type_str = "BOOTLOADER_RECLAIMABLE"; }
+        else if (type == LIMINE_MEMMAP_KERNEL_AND_MODULES)      { type_str = "KERNEL_AND_MODULES"; }
+        else if (type == LIMINE_MEMMAP_FRAMEBUFFER)             { type_str = "FRAMEBUFFER"; }
+
+        ksp("%lx %lx %s\n", base, length, type_str);
     }
 
     ksp("bmp_size %lx can fit in region with base %lx and length %lx\n", bmp_size, biggest_usable_base, biggest_usable_length);

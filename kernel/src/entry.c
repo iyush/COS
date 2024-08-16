@@ -18,8 +18,6 @@
 #include "vmm.c"
 
 
-// extern uint64_t * kernel_end;
-
 // Set the base revision to 2, this is recommended as this is the latest
 // base revision described by the Limine boot protocol specification.
 // See specification for further info.
@@ -30,19 +28,16 @@ __attribute__((used, section(".requests"))) static volatile LIMINE_BASE_REVISION
 // the compiler does not optimise them away, so, usually, they should
 // be made volatile or equivalent, _and_ they should be accessed at least
 // once or marked as used with the "used" attribute as done here.
-
-__attribute__((used, section(".requests"))) static volatile struct limine_framebuffer_request framebuffer_request = {
-    .id = LIMINE_FRAMEBUFFER_REQUEST,
-    .revision = 0};
-__attribute__((used, section(".requests"))) static volatile struct limine_memmap_request memmap_request = {LIMINE_MEMMAP_REQUEST};
+__attribute__((used, section(".requests"))) static volatile struct limine_framebuffer_request framebuffer_request       = { .id = LIMINE_FRAMEBUFFER_REQUEST, .revision = 0};
+__attribute__((used, section(".requests"))) static volatile struct limine_memmap_request memmap_request                 = {LIMINE_MEMMAP_REQUEST};
 __attribute__((used, section(".requests"))) static volatile struct limine_kernel_address_request kernel_address_request = {LIMINE_KERNEL_ADDRESS_REQUEST};
-__attribute__((used, section(".requests"))) static volatile struct limine_hhdm_request hhdm_request = {LIMINE_HHDM_REQUEST};
+__attribute__((used, section(".requests"))) static volatile struct limine_hhdm_request hhdm_request                     = {LIMINE_HHDM_REQUEST};
+__attribute__((used, section(".requests"))) static volatile struct limine_kernel_file_request kfile_request             = {LIMINE_KERNEL_FILE_REQUEST};
 
 // Finally, define the start and end markers for the Limine requests.
 // These can also be moved anywhere, to any .c file, as seen fit.
 
 __attribute__((used, section(".requests_start_marker"))) static volatile LIMINE_REQUESTS_START_MARKER;
-
 __attribute__((used, section(".requests_end_marker"))) static volatile LIMINE_REQUESTS_END_MARKER;
 
 
@@ -70,15 +65,22 @@ void _start(void)
 
     if (framebuffer_request.response == NULL || framebuffer_request.response->framebuffer_count < 1)
     {
+        ksp("framebuffer request failed!\n");
         hcf();
     }
     if (memmap_request.response == NULL)
     {
+        ksp("memmap request failed!\n");
         hcf();
     }
     if (kernel_address_request.response == NULL)
     {
-        ksp("kernel address request is not known\n");
+        ksp("kernel address request failed!\n");
+        hcf();
+    }
+    if (kfile_request.response == NULL)
+    {
+        ksp("kernel file request failed!\n");
         hcf();
     }
     init_idt();
@@ -94,7 +96,7 @@ void _start(void)
     }
 
     pmm_init(memmap_request, hhdm_request, kernel_address_request);
-    vmm_init(hhdm_request, kernel_address_request);
+    vmm_init(hhdm_request, kernel_address_request, kfile_request);
 
     hcf();
 }

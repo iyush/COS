@@ -146,7 +146,6 @@ typedef struct
     uint64_t* p2_frame;
     uint64_t* p3_frame;
 
-    uint64_t* p1_page;
     uint64_t* p2_page;
     uint64_t* p3_page;
 } TemporaryPTHeir;
@@ -177,14 +176,14 @@ static uint64_t* vmm_temporary_page_tables_map(TemporaryPTHeir* temp_pt_heir, vo
     uint16_t frame_offset = 123;
     TemporaryPTHeir* tp = temp_pt_heir;
 
-    tp->p1_page = vmm_get_p1(tp->p3_offset, tp->p2_offset, tp->p1_offset); 
-    if (tp->p1_page[frame_offset] & FRAME_PRESENT) 
+    uint64_t* p1_page = vmm_get_p1(tp->p3_offset, tp->p2_offset, tp->p1_offset); 
+    if (p1_page[frame_offset] & FRAME_PRESENT) 
     {
         // probably we do not care.
         //panic("A frame should never be present here, did you forget to unmap it previously?");
     }
 
-    tp->p1_page[frame_offset] = ((uint64_t)phy_frame) | FRAME_WRITABLE | FRAME_PRESENT;
+    p1_page[frame_offset] = ((uint64_t)phy_frame) | FRAME_WRITABLE | FRAME_PRESENT;
 
     uint64_t* new_p4_page = (uint64_t*)(
             ((uint64_t)tp->p3_offset << 39) | 
@@ -192,6 +191,11 @@ static uint64_t* vmm_temporary_page_tables_map(TemporaryPTHeir* temp_pt_heir, vo
             ((uint64_t)tp->p1_offset << 21) | 
             ((uint64_t)frame_offset  << 12)
         );
+
+    // flush tlb cache
+    uint64_t cr3 = _vmm_cr3();
+    __asm__ volatile("mov %0, %%cr3" : : "r" (cr3) : "memory");
+
     return new_p4_page;
 }
 
@@ -211,16 +215,13 @@ static void vmm_temporary_page_tables_deinit(TemporaryPTHeir tp)
     __asm__ volatile("mov %0, %%cr3" : : "r" (cr3) : "memory");
 }
 
-void vmm_init(struct limine_hhdm_request hhdm_request, struct limine_kernel_address_request kadd_request)
+void vmm_init(struct limine_hhdm_request hhdm_request, struct limine_kernel_address_request kadd_request, struct limine_kernel_file_request kfile_request)
 {
     // recursive map the current page table, p4 to itself
     uint64_t current_p4_frame =  _vmm_cr3();
     uint64_t * current_p4_page  = (uint64_t*)(current_p4_frame + hhdm_request.response->offset);
     current_p4_page[RECURSIVE_PTE_INDEX] = current_p4_frame | FRAME_PRESENT | FRAME_WRITABLE;
 
-    // we initialize some temporary frames so that we can edit page tables.
-
-    TemporaryPTHeir temp_pt_heir = vmm_temporary_page_tables_init(current_p4_page);
 
     vmm_pg_dmp(current_p4_page);
 
@@ -236,6 +237,8 @@ void vmm_init(struct limine_hhdm_request hhdm_request, struct limine_kernel_addr
     //       3. page table entry for kernel malloc region          (virtual address).
     // unmap the page table.
     // switch to the new page table by moving cr3 register.
+
+    TemporaryPTHeir temp_pt_heir = vmm_temporary_page_tables_init(current_p4_page);
     
     for (int j = 0; j < 10; j++)
     {
@@ -243,16 +246,24 @@ void vmm_init(struct limine_hhdm_request hhdm_request, struct limine_kernel_addr
         uint64_t *new_p4_frame = pmm_alloc_frame(1);
 
         // temporarily map the page table to the current page table
+
         uint64_t * page_addr = vmm_temporary_page_tables_map(&temp_pt_heir, new_p4_frame);
+        // ksp("%lx\n", (uint64_t)new_p4_frame);
         vmm_pg_dmp(page_addr);
 
     	// zero the entire page
-        memset((uint8_t *)page_addr, 0xcc, 4096);
+        memset((uint8_t *)page_addr, 0x33, 4096);
 
-        // this should page fault, which it will so we will comment out this line.
-        //vmm_pg_dmp(tp.page_addr);
+        //vmm_pg_dmp(page_addr);
+
+        // unmap the temporary page tables
     }
     vmm_temporary_page_tables_deinit(temp_pt_heir);
+
+    struct limine_file* kfile = kfile_request.response->kernel_file;
+    ksp("kernel file size %ld \n", kfile->size);
+    ksp("kernel address %lx \n", (uint64_t)kfile->address);
+    ksp("kernel path %s \n", kfile->path);
 
     (void)kadd_request;
 }
