@@ -4,13 +4,14 @@
 #include <mem.h>
 #include <vmm.h>
 #include <assert.h>
+#include <elf.h>
 
 extern uint64_t _KERNEL_START;
 extern uint64_t _KERNEL_END;
 
 #define RECURSIVE_PTE_INDEX 0x142ul
 
-uint64_t _vmm_cr3()
+uint64_t vmm_cr3()
 {
     uint64_t cr3;
 
@@ -141,6 +142,7 @@ typedef struct
     uint64_t p1_offset;
     uint64_t p2_offset;
     uint64_t p3_offset;
+    uint64_t frame_offset;
 
     uint64_t* p1_frame;
     uint64_t* p2_frame;
@@ -148,7 +150,11 @@ typedef struct
 
     uint64_t* p2_page;
     uint64_t* p3_page;
+
+
 } TemporaryPTHeir;
+
+#if 0
 
 // a page table heirarchy containing p1 p2 and p3 table, with offsets, used for temporarily mapping page tables and editing them.
 static TemporaryPTHeir vmm_temporary_page_tables_init(uint64_t* p4_table)
@@ -158,6 +164,7 @@ static TemporaryPTHeir vmm_temporary_page_tables_init(uint64_t* p4_table)
     tp.p3_frame = pmm_alloc_frame(1);
     tp.p2_frame = pmm_alloc_frame(1);
     tp.p1_frame = pmm_alloc_frame(1);
+    tp.frame_offset = 123;
 
     p4_table[tp.p3_offset] = ((uint64_t)tp.p3_frame) | FRAME_WRITABLE | FRAME_PRESENT;
 
@@ -173,17 +180,22 @@ static TemporaryPTHeir vmm_temporary_page_tables_init(uint64_t* p4_table)
 
 static uint64_t* vmm_temporary_page_tables_map(TemporaryPTHeir* temp_pt_heir, void* phy_frame)
 {
-    uint16_t frame_offset = 123;
     TemporaryPTHeir* tp = temp_pt_heir;
+    uint16_t frame_offset = tp->frame_offset;
 
     uint64_t* p1_page = vmm_get_p1(tp->p3_offset, tp->p2_offset, tp->p1_offset); 
-    if (p1_page[frame_offset] & FRAME_PRESENT) 
+    while ((p1_page[frame_offset] & FRAME_PRESENT) && frame_offset < 511) 
     {
-        // probably we do not care.
-        //panic("A frame should never be present here, did you forget to unmap it previously?");
+        frame_offset++;
+    }
+
+    if (frame_offset >= 511 && (p1_page[frame_offset] & FRAME_PRESENT))
+    {
+        panic("There is no space left for page the table mapping!");
     }
 
     p1_page[frame_offset] = ((uint64_t)phy_frame) | FRAME_WRITABLE | FRAME_PRESENT;
+    tp->frame_offset = frame_offset;
 
     uint64_t* new_p4_page = (uint64_t*)(
             ((uint64_t)tp->p3_offset << 39) | 
@@ -215,8 +227,13 @@ static void vmm_temporary_page_tables_deinit(TemporaryPTHeir tp)
     __asm__ volatile("mov %0, %%cr3" : : "r" (cr3) : "memory");
 }
 
-void vmm_init(struct limine_hhdm_request hhdm_request, struct limine_kernel_address_request kadd_request, struct limine_kernel_file_request kfile_request)
+
+static void vmm_init(struct limine_hhdm_request hhdm_request, struct limine_kernel_address_request kadd_request, struct limine_kernel_file_request kfile_request)
 {
+    (void) hhdm_request;
+    (void) kadd_request;
+    (void) kfile_request;
+    #if 0
     // recursive map the current page table, p4 to itself
     uint64_t current_p4_frame =  _vmm_cr3();
     uint64_t * current_p4_page  = (uint64_t*)(current_p4_frame + hhdm_request.response->offset);
@@ -238,9 +255,12 @@ void vmm_init(struct limine_hhdm_request hhdm_request, struct limine_kernel_addr
     // unmap the page table.
     // switch to the new page table by moving cr3 register.
 
+
+    ksp("=================\nMapping some temporary pages!\n");
+
     TemporaryPTHeir temp_pt_heir = vmm_temporary_page_tables_init(current_p4_page);
     
-    for (int j = 0; j < 10; j++)
+    for (int j = 0; j < 390; j++)
     {
         // allocate a frame for a new page table
         uint64_t *new_p4_frame = pmm_alloc_frame(1);
@@ -249,7 +269,7 @@ void vmm_init(struct limine_hhdm_request hhdm_request, struct limine_kernel_addr
 
         uint64_t * page_addr = vmm_temporary_page_tables_map(&temp_pt_heir, new_p4_frame);
         // ksp("%lx\n", (uint64_t)new_p4_frame);
-        vmm_pg_dmp(page_addr);
+        // vmm_pg_dmp(page_addr);
 
     	// zero the entire page
         memset((uint8_t *)page_addr, 0x33, 4096);
@@ -258,12 +278,113 @@ void vmm_init(struct limine_hhdm_request hhdm_request, struct limine_kernel_addr
 
         // unmap the temporary page tables
     }
-    vmm_temporary_page_tables_deinit(temp_pt_heir);
+
+    // fill in the identical entries as the currently active page table, namely:
+    //       1. page table entry for kernel code.
+    //       2. page table entry for the higher half direct memory (logical address).
+    //       3. page table entry for kernel malloc region          (virtual address).
+
+    // ^^^ to do 1. we would need to parse the elf sections from the kernel binary and then map them.
+
+
+    uint64_t * p4_frame = pmm_alloc_frame(1);
+    uint64_t * p4 = vmm_temporary_page_tables_map(&temp_pt_heir, new_p4_frame);
+
+    p4[RECURSIVE_PTE_INDEX] = p4_frame | FRAME_WRITABLE | FRAME_PRESENT;
+
 
     struct limine_file* kfile = kfile_request.response->kernel_file;
-    ksp("kernel file size %ld \n", kfile->size);
+    ksp("=======================\nWe are now parsing the kernel file!!!!!!!!!!!\nkernel file size %ld \n", kfile->size);
     ksp("kernel address %lx \n", (uint64_t)kfile->address);
     ksp("kernel path %s \n", kfile->path);
 
+
+    Elf64_Ehdr* ehdr  = (Elf64_Ehdr*) kfile->address;
+    Elf64_Phdr* phdrs = (Elf64_Phdr*) (kfile->address + ehdr->e_phoff);
+
+    for (int i = 0; i < ehdr->e_phnum; i++)
+    {
+        Elf64_Phdr* phdr = phdrs + i;
+        if (phdr->p_type == PT_LOAD)
+        {
+
+            uint64_t nframes = (phdr->p_memsz + 4096) / 4096;
+            ksp("p_flags  0x%x\n"
+                "p_offset 0x%lx\n"
+                "p_vaddr  0x%lx\n"
+                "p_filesz 0x%lx\n"
+                "p_memsz  0x%lx\n" 
+                "n_frames 0x%lx\n" 
+                "p_align  0x%lx\n\n", 
+                phdr->p_flags,
+                phdr->p_offset,
+                phdr->p_vaddr,
+                phdr->p_filesz,
+                phdr->p_memsz,
+                n_frames,
+                phdr->p_align
+                );
+
+            uint64_t vaddr = phdr->p_vaddr;
+
+            uint64_t p4_o = (uint64_t)((vaddr >> 39) & 0x01ff);
+            uint64_t p3_o = (uint64_t)((vaddr >> 30) & 0x01ff);
+            uint64_t p2_o = (uint64_t)((vaddr >> 21) & 0x01ff);
+            uint64_t p1_o = (uint64_t)((vaddr >> 12) & 0x01ff);
+
+
+            uint64_t* p3;
+            uint64_t* p2;
+            uint64_t* p1;
+
+            if (p4[p4_o] & FRAME_PRESENT)
+            {
+                // what do we do here?????
+               panic("this case is not covered!\n");
+            }
+            else
+            {
+                uint64_t * p3_frame = pmm_alloc_frame(1);
+                p3 = vmm_temporary_page_tables_map(&temp_pt_heir, p3_frame);
+            }
+
+            if (p3[p3_o] & FRAME_PRESENT)
+            {
+               panic("this case is not covered!\n");
+            }
+            else
+            {
+                uint64_t * p2_frame = pmm_alloc_frame(1);
+                p2 = vmm_temporary_page_tables_map(&temp_pt_heir, p2_frame);
+            }
+
+            if (p2[p2_o] & FRAME_PRESENT)
+            {
+               panic("this case is not covered!\n");
+            }
+            else
+            {
+                uint64_t * p1_frame = pmm_alloc_frame(1);
+                p1 = vmm_temporary_page_tables_map(&temp_pt_heir, p1_frame);
+            }
+
+            
+            for (int i = 0; i < n_frames; i++)
+            {
+                p1[p1_o + i] = (i * 4096 + p_offset) | FRAME_PRESENT;
+            }
+
+
+            // comparing between p_memsz and filesz, it seems p_memz is bigger
+            // TODO: enforce that alignment is always 0x1000.
+            //vmm_map(phdr->p_vaddr, phdr->p_offset, phdr->p_memsz, phdr->p_flags);
+        }
+    }
+
+
     (void)kadd_request;
+    vmm_temporary_page_tables_deinit(temp_pt_heir);
+
+    #endif
 }
+#endif
