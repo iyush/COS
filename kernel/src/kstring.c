@@ -178,20 +178,37 @@ static void _parse_inner_string(char * f_str, char * buffer, int * curr_str_idx,
 
         case 'd':
             {
-                int val = va_arg(args, int);
-                if (val < 0) {
-                    buffer[*curr_str_idx] = '-';
-                    (*curr_str_idx)++;
-                    val *= -1;
-                }
+                if (!is_long) {
+                    int val = va_arg(args, int);
+                    if (val < 0) {
+                        buffer[*curr_str_idx] = '-';
+                        (*curr_str_idx)++;
+                        val *= -1;
+                    }
 
-                if (val == 0) {
-                    buffer[*curr_str_idx] = '0';
-                    (*curr_str_idx)++;
-                    (*i)++;
-                    break;
+                    if (val == 0) {
+                        buffer[*curr_str_idx] = '0';
+                        (*curr_str_idx)++;
+                        (*i)++;
+                        break;
+                    }
+                    *curr_str_idx = str_from_uint((unsigned int) val, 10, buffer, *curr_str_idx);
+                } else if (is_long) {
+                    long int val = va_arg(args, long int);
+                    if (val < 0) {
+                        buffer[*curr_str_idx] = '-';
+                        (*curr_str_idx)++;
+                        val *= -1;
+                    }
+
+                    if (val == 0) {
+                        buffer[*curr_str_idx] = '0';
+                        (*curr_str_idx)++;
+                        (*i)++;
+                        break;
+                    }
+                    *curr_str_idx = str_from_ulongint((unsigned long int )val, 10, buffer, *curr_str_idx);
                 }
-                *curr_str_idx = str_from_uint((unsigned int) val, 10, buffer, *curr_str_idx);
 
                 (*i)++;
                 break;

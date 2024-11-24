@@ -107,6 +107,9 @@ void all_interrupts_handler(struct regs r)
       case 32:
          timer(r);
          break;
+      case 33:
+         //TODO: keyboard
+         break;
       default:
          ksp("we received an generic interrupt %ld\n", r.interrupt_number);
          dmpregs(r);

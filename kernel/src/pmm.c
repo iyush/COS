@@ -223,6 +223,7 @@ void * pmm_find_free_frame(uint64_t n_frames)
 
 void * pmm_alloc_frame(uint64_t n_frames)
 {
+    ksp("nframes %ld\n", n_frames);
     void * ptr = pmm_find_free_frame(n_frames);
     bmp_set_used(ptr, n_frames);
     return ptr;
