@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include "./kio.h"
 #include "./pic.c"
+#include "idt.h"
+#include "task.h"
 
 typedef struct {
    uint16_t offset_1;        // offset bits 0..15
@@ -20,52 +22,23 @@ typedef struct {
 	uint64_t	base;
 } __attribute__((packed)) idtr_t;
 
-struct __attribute__((packed)) regs {
-   uint64_t rax;
-   uint64_t rbx;
-   uint64_t rcx;
-   uint64_t rdx;
-   uint64_t rbp;
-   uint64_t rsi;
-   uint64_t rdi;
-   uint64_t rsp;
-   uint64_t r8;
-   uint64_t r9;
-   uint64_t r10;
-   uint64_t r11;
-   uint64_t r12;
-   uint64_t r13;
-   uint64_t r14;
-   uint64_t r15;
-
-   uint64_t rflags;
-   uint64_t interrupt_number;
-   // uint64_t rip;
-
-   // uint16_t cs;
-   // uint16_t ds;
-   // uint16_t ss;
-   // uint16_t fs;
-   // uint16_t gs;
-};
-
 void dmpregs(struct regs r) {
-   ksp("rax     %lx\n", r.rax);   
-   ksp("rbx     %lx\n", r.rbx);   
-   ksp("rcx     %lx\n", r.rcx);   
-   ksp("rdx     %lx\n", r.rdx);   
-   ksp("rbp     %lx\n", r.rbp);   
-   ksp("rsi     %lx\n", r.rsi);   
-   ksp("rdi     %lx\n", r.rdi);   
-   ksp("rsp     %lx\n", r.rsp);   
+   ksp("rax     %lx\n", r.rax);
+   ksp("rbx     %lx\n", r.rbx);
+   ksp("rcx     %lx\n", r.rcx);
+   ksp("rdx     %lx\n", r.rdx);
+   ksp("rbp     %lx\n", r.rbp);
+   ksp("rsi     %lx\n", r.rsi);
+   ksp("rdi     %lx\n", r.rdi);
+   ksp("rsp     %lx\n", r.rsp);
    ksp("r8      %lx\n", r.r8);
    ksp("r9      %lx\n", r.r9);
-   ksp("r10     %lx\n", r.r10);   
-   ksp("r11     %lx\n", r.r11);   
-   ksp("r12     %lx\n", r.r12);   
-   ksp("r13     %lx\n", r.r13);   
-   ksp("r14     %lx\n", r.r14);   
-   ksp("r15     %lx\n", r.r15);   
+   ksp("r10     %lx\n", r.r10);
+   ksp("r11     %lx\n", r.r11);
+   ksp("r12     %lx\n", r.r12);
+   ksp("r13     %lx\n", r.r13);
+   ksp("r14     %lx\n", r.r14);
+   ksp("r15     %lx\n", r.r15);
    ksp("rflags  %lx\n", r.rflags);
 }
 /* Interrupt and Exceptions */
@@ -86,22 +59,21 @@ struct interrupt_frame
 
 //static int i = 0;
 
-struct regs timer(struct regs r) { 
-   // ksp("timer!\n");
+void timer(struct regs* r) {
+    task_schedule_next(r);
    pic_send_end_of_interrupt();
-   return r;
 } // 21
 
-void all_interrupts_handler(struct regs r)
+void all_interrupts_handler(struct regs* r)
 {
-   switch (r.interrupt_number) {
+   switch (r->interrupt_number) {
       case 14:
       {
          ksp("We got a page fault!\n");
          uint64_t cr2 = 0;
          asm volatile("mov %%cr2, %0" : "=r" (cr2));
          ksp("Page fault happend at address: %lx\n", cr2);
-         dmpregs(r);
+         dmpregs(*r);
          while(1){ }
       } break;
       case 32:
@@ -111,8 +83,8 @@ void all_interrupts_handler(struct regs r)
          //TODO: keyboard
          break;
       default:
-         ksp("we received an generic interrupt %ld\n", r.interrupt_number);
-         dmpregs(r);
+         ksp("we received an generic interrupt %ld\n", r->interrupt_number);
+         dmpregs(*r);
          while(1) {}
    };
 }
@@ -219,12 +191,12 @@ void init_idt(void) {
    idt_set_handler(21, int_wrapper_21, 0x8E);
 
     asm volatile ("xchgw %bx, %bx");
-   __asm__ volatile("lidt %0" :: "m"(idtr));          // load the new IDT 
+   __asm__ volatile("lidt %0" :: "m"(idtr));          // load the new IDT
 
  int flags = 0;
    init_pic();
    __asm__ volatile("sti");                           // set the interrupt flag
-  
+
    __asm__ volatile("pushf\n\t"
                  "pop %%rax\n\t"
                  "and $0x200, %%rax"
@@ -235,11 +207,11 @@ void init_idt(void) {
 } else {
     ksp("Interrupts are still disabled\n");
 }
-   
+
 }
 
 void init_pic(void) {
-   // we need to offset the pic interrupts, as they will overlap over the 
+   // we need to offset the pic interrupts, as they will overlap over the
    // software interrupts we defined above.
    pic_remap(0x20, 0x28);
 
