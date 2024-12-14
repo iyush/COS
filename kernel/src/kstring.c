@@ -105,7 +105,7 @@ static void _parse_inner_string(char * f_str, char * buffer, int * curr_str_idx,
 
                 // we append
                 int j = 0;
-                while (to_put[j] != '\0') {
+                while (to_put[j] != 0) {
                     buffer[*curr_str_idx] = to_put[j];
                     (*curr_str_idx)++;
                     j++;
@@ -119,7 +119,7 @@ static void _parse_inner_string(char * f_str, char * buffer, int * curr_str_idx,
         case 'x':
             {
                 // NOTE: for some reason if we are passing x, we should convert it to unsigned.
-                // this is also what c compiler does 
+                // this is also what c compiler does
                 // https://godbolt.org/z/cTPareMMn
                 if (is_long) {
                     unsigned long int val = va_arg(args, unsigned long int);
@@ -230,7 +230,7 @@ int kvsprintf(char* buffer, char * f_str, va_list args) {
     bool is_long = false;
 
     while (f_str[i] != '\0') {
-        if (f_str[i] != '%') { 
+        if (f_str[i] != '%') {
             // default
             buffer[curr_str_idx] = f_str[i];
             curr_str_idx++;
@@ -250,5 +250,3 @@ int kvsprintf(char* buffer, char * f_str, va_list args) {
     va_end(args);
     return curr_str_idx;
 }
-
-

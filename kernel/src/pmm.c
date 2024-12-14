@@ -81,7 +81,7 @@ int memcmp(const void *s1, const void *s2, size_t n)
 
 void bmp_set_free(uint64_t frame_ptr, uint64_t n_frames)
 {
-    uint64_t frame_start = frame_ptr / FRAME_SIZE; 
+    uint64_t frame_start = frame_ptr / FRAME_SIZE;
 
     uint64_t frame = 0;
     uint64_t frame_big_index = 0;
@@ -148,7 +148,7 @@ void pmm_init(struct limine_memmap_request memmap_request, struct limine_hhdm_re
         }
 
         char * type_str = "USABLE";
-        if      (type == LIMINE_MEMMAP_RESERVED)                { type_str = "RESERVED"; } 
+        if      (type == LIMINE_MEMMAP_RESERVED)                { type_str = "RESERVED"; }
         else if (type == LIMINE_MEMMAP_ACPI_RECLAIMABLE)        { type_str = "ACPI_RECLAIMABLE"; }
         else if (type == LIMINE_MEMMAP_ACPI_NVS)                { type_str = "ACPI_NVS"; }
         else if (type == LIMINE_MEMMAP_BAD_MEMORY)              { type_str = "BAD_MEMORY"; }
@@ -200,7 +200,7 @@ void * pmm_find_free_frame(uint64_t n_frames)
 
     uint64_t start_frame = 0;
     uint64_t end_frame = 0;
-    
+
     for (uint64_t i = 0; i < bmp_size; i++)
     {
         for (uint64_t j = 0; j <= 8; j++)
@@ -223,7 +223,7 @@ void * pmm_find_free_frame(uint64_t n_frames)
 
 void * pmm_alloc_frame(uint64_t n_frames)
 {
-    ksp("nframes %ld\n", n_frames);
+    // ksp("nframes %ld\n", n_frames);
     void * ptr = pmm_find_free_frame(n_frames);
     bmp_set_used(ptr, n_frames);
     return ptr;
