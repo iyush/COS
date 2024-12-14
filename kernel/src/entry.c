@@ -17,6 +17,7 @@
 #include "pmm.c"
 #include "vmm.c"
 #include "elf.c"
+#include "task.c"
 
 
 // Set the base revision to 2, this is recommended as this is the latest
@@ -56,6 +57,30 @@ static void hcf(void)
         asm("hlt");
     }
 }
+
+
+
+
+
+
+
+
+
+void task_entry_example1()
+{
+    while (1) {
+        ksp("Hello world!");
+    }
+}
+
+void task_entry_example2()
+{
+    while (1) {
+        ksp("Goodbye World!");
+    }
+}
+
+
 
 
 // The following will be our kernel's entry point.
@@ -110,17 +135,19 @@ void _start(void)
     ptr[2] = 'p';
     ksp("%s\n", ptr);
 
+    task_init(task_entry_example1);
+    task_init(task_entry_example2);
 
-    for (int i = 0; i < 1023; i++) {
-        char * ptr2 = vmalloc(1024);
-        memset(ptr2, 0, 1024);
-        ptr2[0] = 'g' + (i % 19);
-        ptr2[1] = '+';
-        ptr2[2] = '+';
-        ksp("%d %lx %s\n", i, (uint64_t)ptr2, ptr2);
-    }
+    // for (int i = 0; i < 1023; i++) {
+    //     char * ptr2 = vmalloc(1024);
+    //     memset(ptr2, 0, 1024);
+    //     ptr2[0] = 'g' + (i % 19);
+    //     ptr2[1] = '+';
+    //     ptr2[2] = '+';
+    //     ksp("%d %lx %s\n", i, (uint64_t)ptr2, ptr2);
+    // }
 
-    hcf();
+    while(1) {}
 }
 
 extern void test_kstring_all();

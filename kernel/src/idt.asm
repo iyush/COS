@@ -31,6 +31,7 @@ int_wrapper_%1:
 
   ;; here we go.............
   cld
+  mov rdi, rsp    ; Pass pointer to register structure as first argument
   call all_interrupts_handler
 
   pop rax
