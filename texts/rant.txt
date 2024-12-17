@@ -1,0 +1,52 @@
+My comment was mostly towards the attitude that we see among a lot of
+engineers that the compiler is a magic box that should do the heavy lifting and
+they, on the other hand, should lean back and write code and not worry about
+anything at all. The "platform", i.e target where the code should be running
+has shifted towards the brain of the programmer, away from the hardware.
+People execute the code in their brains and expect the computer to follow along.
+
+Compilers are good at computational optimizations, but are not good at finding
+optimal access patterns to memory, which is the main bottleneck today and (no
+amount of PGOs will solve it). Hardware today can execute 512 bits (AVX-512) of
+data at the same time, and yet we see massive ineffiencies. We have kilobytes
+of cache spaces wasted, fucking page table walks performed within the span of
+couple of instructions and why?  Because of false abstractions, abstractions
+that were made up in the programmers mind when they were conjured up. This is
+ever present in OOP, which I am sure you will not disagree with, and also is
+present (to some extent) in FP. Take for example of Immutability and Purity,
+which are the core tenets of FP.
+
+Immutability and purity are antithetical(*) to the hardware, hardware is neither
+pure nor immutable, it is merely a state machine that constantly writes and
+overwrites one data or another, depending on the global state. There are costs
+for these abstractions: constant copying/serializing and deserializing, which
+is for the most part hidden. Hidden things incentivizes the masses to not
+thinkabout it. Example, copying or doing mem alloc in something
+like C/Rust/Zig, it is explicit, it is there for all to see, you have to
+cognizant of doing that in those languages. Are these things as explicit in FP
+languages?  No! People would argue the FP compiler optimizes it, and while that
+is true but like I said above with access patterns it is not true for *all*
+cases. There is no direct control over memory, its lifetime and all the memory
+related responsiblities fall on the Garbage collector. There is no way to
+guarantee compilers will use use the features that came with your CPU when you
+bought it. There is no way to tell the compiler to guarantee specific
+transformations (inlining, loop unrolling, autovectorization, etc.) (which is
+also a problem in imperative languages). 
+
+I do not want to put FP languages in the bad light and dismiss them, I will
+acknowledge that their enforcement of strict types has spilled over in the
+imperative land has done good. Purity and Immutability to some extent is good,
+it ensures that data does not change abruptly and helps cache lines to remain
+valid, prefetching is good, helps in speculative execution, branch prediction,
+HTM etc etc etc. My main argument is for hidden features that are incentivized
+to completely oblivious masses. Immutability and Purity are very nuanced thing,
+that should not be enforced/incentivized by the language, it depends on the use
+cases and should left as so. You could argue that dumbs are not using OCaml or
+Haskell, but thats what they were saying about Python 20 years ago.
+
+What we need for the future is languages that harmonizes more with the
+underlying hardware more and less with the brain of the programmer. The closest
+languages that fills the void is probably C/Rust/Zig and ISPC. The field has
+strayed far away from engineering and more into philosophy  and it has to stop.
+
+I could write more but I will probably end it now since its 1:30 here.
