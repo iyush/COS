@@ -6,6 +6,7 @@ limine
 
 *.o
 *.elf
+!test.elf
 *.bin
 *.iso
 *.swp

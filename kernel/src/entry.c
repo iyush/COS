@@ -35,6 +35,8 @@ __attribute__((used, section(".requests"))) static volatile struct limine_memmap
 __attribute__((used, section(".requests"))) static volatile struct limine_kernel_address_request kernel_address_request = {LIMINE_KERNEL_ADDRESS_REQUEST};
 __attribute__((used, section(".requests"))) static volatile struct limine_hhdm_request hhdm_request                     = {LIMINE_HHDM_REQUEST};
 __attribute__((used, section(".requests"))) static volatile struct limine_kernel_file_request kfile_request             = {LIMINE_KERNEL_FILE_REQUEST};
+__attribute__((used, section(".requests"))) static volatile struct limine_module_request module_request                 = {LIMINE_MODULE_REQUEST};
+
 
 // Finally, define the start and end markers for the Limine requests.
 // These can also be moved anywhere, to any .c file, as seen fit.
@@ -114,6 +116,11 @@ void _start(void)
         ksp("kernel file request failed!\n");
         hcf();
     }
+    if (module_request.response == NULL)
+    {
+        ksp("module request failed!\n");
+        hcf();
+    }
     init_idt();
 
     // Fetch the first framebuffer.
@@ -133,10 +140,19 @@ void _start(void)
     ptr[0] = 'c';
     ptr[1] = 'p';
     ptr[2] = 'p';
+
+
+    ASSERT_EQ((u32)module_request.response->module_count, 1); // make sure that we have atleast one file.
+
+
+    Elf64 elf = elf_parse(module_request.response->modules[0]->address, module_request.response->modules[0]->size);
+    ksp("pheader %lx\n", (u64) elf.p_headers);
+    ksp("sheader %lx\n", (u64) elf.s_headers);
+
     ksp("%s\n", ptr);
 
-    task_init(task_entry_example1);
-    task_init(task_entry_example2);
+    // task_init(task_entry_example1);
+    // task_init(task_entry_example2);
 
     // for (int i = 0; i < 1023; i++) {
     //     char * ptr2 = vmalloc(1024);
