@@ -12,11 +12,13 @@ static int64_t current_task_id = 0;
 
 void task_init(void (*entry_fn)(void))
 {
-    struct Task new_task = {0};
-    new_task.r.rip = (uint64_t) entry_fn;
-    new_task.r.rsp = (uint64_t) vmalloc(1024 * 1024 * 4);
+    (void) entry_fn;
+    // struct Task new_task = {0};
+    // new_task.r.rip = (u64) entry_fn;
+    TODO("this is not done yet!");
+    // new_task.r.rsp = (u64) vmalloc(1024 * 1024 * 4);
 
-    tasks[task_idx_bmp_ptr++] = new_task;
+    // tasks[task_idx_bmp_ptr++] = new_task;
 }
 
 void task_schedule_next(struct regs* r)

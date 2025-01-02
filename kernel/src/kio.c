@@ -2,7 +2,7 @@
 #define KIO_H
 #include <stdarg.h>
 #include "./kstring.h"
-#include <stdint.h>
+#include "stdint.h"
 #include <stdbool.h>
 #include "./io.h"
 

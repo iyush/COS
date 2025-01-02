@@ -5,6 +5,7 @@ boot: cdrom
 log: log/bochs.log
 clock: sync=realtime
 cpu: ips=70000000
-display_library: x
+display_library: sdl2
 magic_break: enabled=1
 port_e9_hack: enabled=1
+com1: enabled=1, mode=term

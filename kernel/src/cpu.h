@@ -1,7 +1,7 @@
 #pragma once
 
-uint32_t cpuid() {
-    uint32_t cpuid;
+u32 cpuid() {
+    u32 cpuid;
     asm __volatile__ (
             "mov $0x80000001, %%eax\n"
             "cpuid\n"

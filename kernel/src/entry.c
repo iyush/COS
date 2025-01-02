@@ -1,13 +1,13 @@
-#include <stdint.h>
+#include "stdint.h"
 #include <stddef.h>
 #include <stdbool.h>
-#include <limine.h>
 
 #include "./kio.h"
 #include "./idt.h"
 #include "./io.h"
-#include <stdint.h>
+#include "stdint.h"
 #include <pmm.h>
+#include "bochs.h"
 
 #include "./idt.c"
 #include "./pic.c"
@@ -18,36 +18,16 @@
 #include "vmm.c"
 #include "elf.c"
 #include "task.c"
+#include "asa_limine.h"
 
 
-// Set the base revision to 2, this is recommended as this is the latest
-// base revision described by the Limine boot protocol specification.
-// See specification for further info.
+#define MAX_REGION_LIST_TASK 1024
 
-__attribute__((used, section(".requests"))) static volatile LIMINE_BASE_REVISION(2);
-
-// The Limine requests can be placed anywhere, but it is important that
-// the compiler does not optimise them away, so, usually, they should
-// be made volatile or equivalent, _and_ they should be accessed at least
-// once or marked as used with the "used" attribute as done here.
-__attribute__((used, section(".requests"))) static volatile struct limine_framebuffer_request framebuffer_request       = { .id = LIMINE_FRAMEBUFFER_REQUEST, .revision = 0};
-__attribute__((used, section(".requests"))) static volatile struct limine_memmap_request memmap_request                 = {LIMINE_MEMMAP_REQUEST};
-__attribute__((used, section(".requests"))) static volatile struct limine_kernel_address_request kernel_address_request = {LIMINE_KERNEL_ADDRESS_REQUEST};
-__attribute__((used, section(".requests"))) static volatile struct limine_hhdm_request hhdm_request                     = {LIMINE_HHDM_REQUEST};
-__attribute__((used, section(".requests"))) static volatile struct limine_kernel_file_request kfile_request             = {LIMINE_KERNEL_FILE_REQUEST};
-__attribute__((used, section(".requests"))) static volatile struct limine_module_request module_request                 = {LIMINE_MODULE_REQUEST};
+extern u8 _KERNEL_START;
+extern u8 _KERNEL_END;
 
 
-// Finally, define the start and end markers for the Limine requests.
-// These can also be moved anywhere, to any .c file, as seen fit.
-
-__attribute__((used, section(".requests_start_marker"))) static volatile LIMINE_REQUESTS_START_MARKER;
-__attribute__((used, section(".requests_end_marker"))) static volatile LIMINE_REQUESTS_END_MARKER;
-
-void region_init();
-void * vmalloc(size_t size);
-void page_table_init();
-uint64_t page_table_alloc_frame();
+extern void set_page_table_and_jump(u64 page_table_frame, u64 stack_address, u64 entry_point);
 
 
 // Halt and catch fire function.
@@ -59,13 +39,6 @@ static void hcf(void)
         asm("hlt");
     }
 }
-
-
-
-
-
-
-
 
 
 void task_entry_example1()
@@ -81,9 +54,6 @@ void task_entry_example2()
         ksp("Goodbye World!");
     }
 }
-
-
-
 
 // The following will be our kernel's entry point.
 // If renaming _start() to something else, make sure to change the
@@ -125,7 +95,7 @@ void _start(void)
 
     // Fetch the first framebuffer.
     struct limine_framebuffer *framebuffer = framebuffer_request.response->framebuffers[0];
-    volatile uint32_t *fb_ptr = framebuffer->address;
+    volatile u32 *fb_ptr = framebuffer->address;
 
     // Note: we assume the framebuffer model is RGB with 32-bit pixels.
     for (size_t i = 0; i < 100; i++)
@@ -136,32 +106,97 @@ void _start(void)
     pmm_init(memmap_request, hhdm_request, kernel_address_request);
     vmm_init(hhdm_request);
 
-    char * ptr = vmalloc(1024);
-    ptr[0] = 'c';
-    ptr[1] = 'p';
-    ptr[2] = 'p';
-
-
     ASSERT_EQ((u32)module_request.response->module_count, 1); // make sure that we have atleast one file.
 
+    void* elf_module_start = module_request.response->modules[0]->address; 
+    u64 elf_module_size = module_request.response->modules[0]->size; 
 
-    Elf64 elf = elf_parse(module_request.response->modules[0]->address, module_request.response->modules[0]->size);
+    Elf64 elf = elf_parse(elf_module_start, elf_module_size);
+
+    u64 page_table_address = page_table_create();
+    RegionList region_list = regionlist_create(MAX_REGION_LIST_TASK);
+
+    for (u64 i = 0; i < elf.p_headers_len; i++) {
+        Elf64_Phdr pheader = elf.p_headers[i];
+        (void) page_table_address;
+        if (pheader.p_type == PT_LOAD) {
+            ksp("pheader.p_memsz: %lx\n", pheader.p_memsz);
+            ksp("pheader.p_vaddr: %lx\n", pheader.p_vaddr);
+            ksp("pheader.p_offset: %lx\n", pheader.p_offset);
+            ksp("pheader.p_flags: %x\n", pheader.p_flags);
+
+            pheader.p_vaddr = align_down(pheader.p_vaddr);
+            pheader.p_memsz = align_up(pheader.p_memsz);
+            pheader.p_offset = align_down(pheader.p_offset);
+
+            ASSERT(pheader.p_vaddr % 0x1000 == 0);
+            ASSERT(pheader.p_offset % 0x1000 == 0);
+
+            // reserve the virtual address;
+            Region region = region_create(pheader.p_vaddr, pheader.p_memsz, false, false, -1);
+
+            if (pheader.p_flags & PF_R) region.is_writable = false;
+            if (pheader.p_flags & PF_W) region.is_writable = true;
+
+
+            regionlist_append(&region_list, region);
+            region_map(region, page_table_address, to_lower_half(pheader.p_offset + (u64)elf_module_start));
+        }
+    }
+
+    // for (u64 i = 0; i < elf.s_headers_len; i++) {
+    //     Elf64_Shdr sheader = elf.s_headers[i];
+    //     (void) page_table_address;
+    //     if (sheader.sh_type == SHT_PROGBITS) {
+    //         ksp("sheader.sh_size: %lx\n", sheader.sh_size);
+    //         ksp("sheader.sh_addr: %lx\n", sheader.sh_addr);
+    //         ksp("sheader.sh_offset: %lx\n", sheader.sh_offset);
+
+    //         sheader.sh_addr = align_down(sheader.sh_addr);
+    //         sheader.sh_size = align_up(sheader.sh_size);
+    //         sheader.sh_offset = align_down(sheader.sh_offset);
+
+    //         ASSERT(sheader.sh_addr % 0x1000 == 0);
+    //         ASSERT(sheader.sh_offset % 0x1000 == 0);
+
+    //         // reserve the virtual address;
+    //         Region region = region_create(sheader.sh_addr, sheader.sh_size, false, -1);
+    //         regionlist_append(&region_list, region);
+    //         region_map(region, page_table_address, to_lower_half(sheader.sh_offset + (u64)elf_module_start));
+    //     }
+    // }
+
     ksp("pheader %lx\n", (u64) elf.p_headers);
     ksp("sheader %lx\n", (u64) elf.s_headers);
+    ksp("entry %lx\n", (u64) elf.header.e_entry);
+    ksp("page_table_address %lx\n", page_table_address);
+    ksp("KERNEL_START %lx\n", (u64)&_KERNEL_START);
+    ksp("KERNEL_END %lx\n", (u64)&_KERNEL_END);
 
-    ksp("%s\n", ptr);
+    // IMPORTANT: map the kernel on higher half.
+    u64 kernel_size = align_up((u64)&_KERNEL_END - (u64)&_KERNEL_START);
+    Region kernel_region = region_create(kernel_address_request.response->virtual_base, kernel_size, false, false, -1);
+    regionlist_append(&region_list, kernel_region);
+    region_map(kernel_region, page_table_address, kernel_address_request.response->physical_base);
 
-    // task_init(task_entry_example1);
-    // task_init(task_entry_example2);
+    // IMPORTANT: create a stack for the executable
+    u64 stack_size = 0x100000; // 1Mib;
+    void* stack_frame = pmm_alloc_frame(stack_size >> 12);
+    ASSERT(stack_frame);
+    u64 stack_address = 0x7ff000000000;
 
-    // for (int i = 0; i < 1023; i++) {
-    //     char * ptr2 = vmalloc(1024);
-    //     memset(ptr2, 0, 1024);
-    //     ptr2[0] = 'g' + (i % 19);
-    //     ptr2[1] = '+';
-    //     ptr2[2] = '+';
-    //     ksp("%d %lx %s\n", i, (uint64_t)ptr2, ptr2);
-    // }
+    Region stack_region = region_create(stack_address, stack_size, false, true, -1);
+    regionlist_append(&region_list, stack_region);
+    region_map(stack_region, page_table_address, (u64)stack_frame);
+
+    ksp("Stack: %lx Entry: %lx CR3: %lx\n", 
+        stack_address,
+        elf.header.e_entry,
+        to_lower_half(page_table_address));
+
+    page_table_active_walk_and_print(stack_address, page_table_address);
+    bochs_breakpoint();
+    set_page_table_and_jump(to_lower_half(page_table_address), stack_address, elf.header.e_entry);
 
     while(1) {}
 }

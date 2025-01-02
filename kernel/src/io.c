@@ -1,16 +1,16 @@
 // Reference: https://wiki.osdev.org/Inline_Assembly/Examples#I.2FO_access
 #include "./io.h"
 
-void outb(uint16_t port, uint8_t val) {
+void outb(u16 port, u8 val) {
    asm volatile("outb %0, %1" :: "a"(val), "Nd"(port): "memory");
    // move 'val' to eax register.
    // Nd allows for one-byte constant values to be assembled as constants, freeing the edx registers
    // other cases. See: https://gcc.gnu.org/onlinedocs/gcc/Machine-Constraints.html
 }
 
-uint8_t inb(uint16_t port)
+u8 inb(u16 port)
 {
-    uint8_t ret;
+    u8 ret;
     asm volatile ( "inb %1, %0"
                    : "=a"(ret)
                    : "Nd"(port)

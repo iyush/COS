@@ -6,7 +6,7 @@
 #define MAX_TASKS 1024
 
 struct Task {
-    int32_t id;
+    s32 id;
     struct regs r;
 };
 

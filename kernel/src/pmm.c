@@ -1,12 +1,12 @@
-#include <stdint.h>
+#include "stdint.h"
 #include <limine.h>
-#include <stdint.h>
+#include "stdint.h"
 #include <stddef.h>
 #include <stdbool.h>
 #include <pmm.h>
 
-uint8_t* bmp;
-uint64_t bmp_size;
+u8* bmp;
+u64 bmp_size;
 
 
 // GCC and Clang reserve the right to generate calls to the following
@@ -17,8 +17,8 @@ uint64_t bmp_size;
 
 void *memcpy(void *dest, const void *src, size_t n)
 {
-    uint8_t *pdest = (uint8_t *)dest;
-    const uint8_t *psrc = (const uint8_t *)src;
+    u8 *pdest = (u8 *)dest;
+    const u8 *psrc = (const u8 *)src;
 
     for (size_t i = 0; i < n; i++)
     {
@@ -30,11 +30,11 @@ void *memcpy(void *dest, const void *src, size_t n)
 
 void *memset(void *s, int c, size_t n)
 {
-    uint8_t *p = (uint8_t *)s;
+    u8 *p = (u8 *)s;
 
     for (size_t i = 0; i < n; i++)
     {
-        p[i] = (uint8_t)c;
+        p[i] = (u8)c;
     }
 
     return s;
@@ -42,8 +42,8 @@ void *memset(void *s, int c, size_t n)
 
 void *memmove(void *dest, const void *src, size_t n)
 {
-    uint8_t *pdest = (uint8_t *)dest;
-    const uint8_t *psrc = (const uint8_t *)src;
+    u8 *pdest = (u8 *)dest;
+    const u8 *psrc = (const u8 *)src;
 
     if (src > dest)
     {
@@ -65,8 +65,8 @@ void *memmove(void *dest, const void *src, size_t n)
 
 int memcmp(const void *s1, const void *s2, size_t n)
 {
-    const uint8_t *p1 = (const uint8_t *)s1;
-    const uint8_t *p2 = (const uint8_t *)s2;
+    const u8 *p1 = (const u8 *)s1;
+    const u8 *p2 = (const u8 *)s2;
 
     for (size_t i = 0; i < n; i++)
     {
@@ -79,15 +79,15 @@ int memcmp(const void *s1, const void *s2, size_t n)
     return 0;
 }
 
-void bmp_set_free(uint64_t frame_ptr, uint64_t n_frames)
+void bmp_set_free(u64 frame_ptr, u64 n_frames)
 {
-    uint64_t frame_start = frame_ptr / FRAME_SIZE;
+    u64 frame_start = frame_ptr / FRAME_SIZE;
 
-    uint64_t frame = 0;
-    uint64_t frame_big_index = 0;
-    uint64_t frame_sma_index = 0;
+    u64 frame = 0;
+    u64 frame_big_index = 0;
+    u64 frame_sma_index = 0;
 
-    for (uint64_t i = 0; i < n_frames; i++)
+    for (u64 i = 0; i < n_frames; i++)
     {
         frame = frame_start + i;
         frame_big_index = (frame / 8);
@@ -97,15 +97,15 @@ void bmp_set_free(uint64_t frame_ptr, uint64_t n_frames)
     }
 }
 
-void bmp_set_used(void* frame_ptr, uint64_t n_frames)
+void bmp_set_used(void* frame_ptr, u64 n_frames)
 {
-    uint64_t frame_start = (uint64_t)frame_ptr / FRAME_SIZE;
+    u64 frame_start = (u64)frame_ptr / FRAME_SIZE;
 
-    uint64_t frame = 0;
-    uint64_t frame_big_index = 0;
-    uint64_t frame_sma_index = 0;
+    u64 frame = 0;
+    u64 frame_big_index = 0;
+    u64 frame_sma_index = 0;
 
-    for (uint64_t i = 0; i < n_frames; i++)
+    for (u64 i = 0; i < n_frames; i++)
     {
         frame = frame_start + i;
         frame_big_index = (frame / 8);
@@ -117,11 +117,11 @@ void bmp_set_used(void* frame_ptr, uint64_t n_frames)
 
 void pmm_init(struct limine_memmap_request memmap_request, struct limine_hhdm_request hhdm_request, struct limine_kernel_address_request kernel_address_request)
 {
-    uint64_t highest_frame_top = 0;
-    for (uint64_t i = 0; i < memmap_request.response->entry_count; i++)
+    u64 highest_frame_top = 0;
+    for (u64 i = 0; i < memmap_request.response->entry_count; i++)
     {
-        uint64_t length = memmap_request.response->entries[i]->length;
-        uint64_t base = memmap_request.response->entries[i]->base;
+        u64 length = memmap_request.response->entries[i]->length;
+        u64 base = memmap_request.response->entries[i]->base;
         if (base + length > highest_frame_top)
         {
             highest_frame_top = base + length;
@@ -129,13 +129,13 @@ void pmm_init(struct limine_memmap_request memmap_request, struct limine_hhdm_re
     }
 
     bmp_size = ((highest_frame_top + FRAME_SIZE) / FRAME_SIZE) / 8;
-    uint64_t biggest_usable_base = 0;
-    uint64_t biggest_usable_length = 0;
-    for (uint64_t i = 0; i < memmap_request.response->entry_count; i++)
+    u64 biggest_usable_base = 0;
+    u64 biggest_usable_length = 0;
+    for (u64 i = 0; i < memmap_request.response->entry_count; i++)
     {
-        uint64_t type = memmap_request.response->entries[i]->type;
-        uint64_t length = memmap_request.response->entries[i]->length;
-        uint64_t base = memmap_request.response->entries[i]->base;
+        u64 type = memmap_request.response->entries[i]->type;
+        u64 length = memmap_request.response->entries[i]->length;
+        u64 base = memmap_request.response->entries[i]->base;
 
 
         if (length > bmp_size && type == LIMINE_MEMMAP_USABLE)
@@ -161,18 +161,18 @@ void pmm_init(struct limine_memmap_request memmap_request, struct limine_hhdm_re
 
     ksp("bmp_size %lx can fit in region with base %lx and length %lx\n", bmp_size, biggest_usable_base, biggest_usable_length);
 
-    bmp = (uint8_t *)biggest_usable_base + hhdm_request.response->offset;
+    bmp = (u8 *)biggest_usable_base + hhdm_request.response->offset;
 
     ksp("kernel physical start: %lx\n", kernel_address_request.response->physical_base);
     ksp("kernel virtual start: %lx\n", kernel_address_request.response->virtual_base);
 
     memset(bmp, 0xff, bmp_size);
 
-    for (uint64_t i = 0; i < memmap_request.response->entry_count; i++)
+    for (u64 i = 0; i < memmap_request.response->entry_count; i++)
     {
-        uint64_t type = memmap_request.response->entries[i]->type;
-        uint64_t length = memmap_request.response->entries[i]->length;
-        uint64_t base = memmap_request.response->entries[i]->base;
+        u64 type = memmap_request.response->entries[i]->type;
+        u64 length = memmap_request.response->entries[i]->length;
+        u64 base = memmap_request.response->entries[i]->base;
 
         if (type == LIMINE_MEMMAP_USABLE)
         {
@@ -191,19 +191,19 @@ void pmm_init(struct limine_memmap_request memmap_request, struct limine_hhdm_re
     bmp[0] = bmp[0] & ~(1 << 0);
 }
 
-void * pmm_find_free_frame(uint64_t n_frames)
+void * pmm_find_free_frame(u64 n_frames)
 {
     if (n_frames == 0)
     {
         return NULL;
     }
 
-    uint64_t start_frame = 0;
-    uint64_t end_frame = 0;
+    u64 start_frame = 0;
+    u64 end_frame = 0;
 
-    for (uint64_t i = 0; i < bmp_size; i++)
+    for (u64 i = 0; i < bmp_size; i++)
     {
-        for (uint64_t j = 0; j <= 8; j++)
+        for (u64 j = 0; j <= 8; j++)
         {
             end_frame = i * 8 + j;
             if (((bmp[i] >> j) & 1) == 1)
@@ -221,15 +221,17 @@ void * pmm_find_free_frame(uint64_t n_frames)
     return NULL;
 }
 
-void * pmm_alloc_frame(uint64_t n_frames)
+void * pmm_alloc_frame(u64 n_frames)
 {
     // ksp("nframes %ld\n", n_frames);
     void * ptr = pmm_find_free_frame(n_frames);
-    bmp_set_used(ptr, n_frames);
+    if (ptr) {
+        bmp_set_used(ptr, n_frames);
+    }
     return ptr;
 }
 
-void pmm_dealloc_frame(void* ptr, uint64_t n_frame)
+void pmm_dealloc_frame(void* ptr, u64 n_frame)
 {
-    bmp_set_free((uint64_t)ptr, n_frame);
+    bmp_set_free((u64)ptr, n_frame);
 }
