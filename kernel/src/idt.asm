@@ -1,5 +1,16 @@
 extern all_interrupts_handler
 
+global set_page_table_and_jump
+set_page_table_and_jump:
+  mov cr3, rdi
+  mov rsp, rsi
+  push 0  ; Null return address
+  xor rbp, rbp
+  xor rax, rax
+  xor rbx, rbx
+  xor rcx, rcx
+  jmp rdx
+
 %macro INTERRUPT_WRAPPER 1
 global int_wrapper_%1
 int_wrapper_%1:
@@ -83,3 +94,9 @@ INTERRUPT_WRAPPER 21
 ;; hardware interrupts
 INTERRUPT_WRAPPER 32 ; timer
 INTERRUPT_WRAPPER 33 ; keyboard
+
+
+
+
+
+

@@ -1,25 +1,25 @@
 #ifndef IDT_H
 #define IDT_H
 
-#include <stdint.h>
+#include "stdint.h"
 #include "./kio.h"
 #include "./pic.c"
 #include "idt.h"
 #include "task.h"
 
 typedef struct {
-   uint16_t offset_1;        // offset bits 0..15
-   uint16_t selector;        // a code segment selector in GDT or LDT
-   uint8_t  ist;             // bits 0..2 holds Interrupt Stack Table offset, rest of bits zero.
-   uint8_t  type_attributes; // gate type, dpl, and p fields
-   uint16_t offset_2;        // offset bits 16..31
-   uint32_t offset_3;        // offset bits 32..63
-   uint32_t zero;            // reserved
+   u16 offset_1;        // offset bits 0..15
+   u16 selector;        // a code segment selector in GDT or LDT
+   u8  ist;             // bits 0..2 holds Interrupt Stack Table offset, rest of bits zero.
+   u8  type_attributes; // gate type, dpl, and p fields
+   u16 offset_2;        // offset bits 16..31
+   u32 offset_3;        // offset bits 32..63
+   u32 zero;            // reserved
 } __attribute__((packed)) idt_entry_64_t;
 
 typedef struct {
-	uint16_t	limit;
-	uint64_t	base;
+	u16	limit;
+	u64	base;
 } __attribute__((packed)) idtr_t;
 
 void dmpregs(struct regs r) {
@@ -50,11 +50,11 @@ static idtr_t idtr;
 
 struct interrupt_frame
 {
-    uint64_t eip;
-    uint64_t cs;
-    uint64_t flags;
-    uint64_t sp;
-    uint64_t ss;
+    u64 eip;
+    u64 cs;
+    u64 flags;
+    u64 sp;
+    u64 ss;
 };
 
 //static int i = 0;
@@ -70,7 +70,7 @@ void all_interrupts_handler(struct regs* r)
       case 14:
       {
          ksp("We got a page fault!\n");
-         uint64_t cr2 = 0;
+         u64 cr2 = 0;
          asm volatile("mov %%cr2, %0" : "=r" (cr2));
          ksp("Page fault happend at address: %lx\n", cr2);
          dmpregs(*r);
@@ -90,7 +90,7 @@ void all_interrupts_handler(struct regs* r)
 }
 
 // __attribute__ ((interrupt))
-// static void generic_exception_handler(struct interrupt_frame *frame, uint64_t error_code)
+// static void generic_exception_handler(struct interrupt_frame *frame, u64 error_code)
 // {
 //    (void)frame;
 //    (void)error_code;
@@ -122,8 +122,8 @@ extern void int_wrapper_20();
 extern void int_wrapper_21();
 
 // hardware interrupts
-extern __attribute__((interrupt)) void int_wrapper_32(struct interrupt_frame*, uint64_t);
-extern __attribute__((interrupt)) void int_wrapper_33(struct interrupt_frame*, uint64_t);
+extern __attribute__((interrupt)) void int_wrapper_32(struct interrupt_frame*, u64);
+extern __attribute__((interrupt)) void int_wrapper_33(struct interrupt_frame*, u64);
 
 
 void divide_error                 (struct interrupt_frame* iframe             ) { (void)iframe; ksp("divide error");                  halt(); } // 0
@@ -134,30 +134,30 @@ void overflow                     (struct interrupt_frame* iframe             ) 
 void bound_range_exceeded         (struct interrupt_frame* iframe             ) { (void)iframe; ksp("bound range exceeded");          halt(); } // 5
 void invalid_opcode               (struct interrupt_frame* iframe             ) { (void)iframe; ksp("invalid opcode");                halt(); } // 6
 void device_not_available         (struct interrupt_frame* iframe             ) { (void)iframe; ksp("device not available");          halt(); } // 7
-void double_fault                 (struct interrupt_frame* iframe, uint64_t ui) { (void)iframe; (void)ui; ksp("EXCEPTION: double fault");       halt(); } // 8
+void double_fault                 (struct interrupt_frame* iframe, u64 ui) { (void)iframe; (void)ui; ksp("EXCEPTION: double fault");       halt(); } // 8
 void co_processor_segment_overrun (struct interrupt_frame* iframe             ) { (void)iframe; ksp("co-processor segment overrun");  halt(); } // 9
-void invalid_tss                  (struct interrupt_frame* iframe, uint64_t ui) { (void)iframe; (void)ui; ksp("EXCEPTION: invalid tss");        halt(); } // 10
-void segment_not_present          (struct interrupt_frame* iframe, uint64_t ui) { (void)iframe; (void)ui; ksp("EXCEPTION: segment not present");halt(); } // 11
-void stack_segment_fault          (struct interrupt_frame* iframe, uint64_t ui) { (void)iframe; (void)ui; ksp("EXCEPTION: stack segment fault");halt(); } // 12
-void general_protection           (struct interrupt_frame* iframe, uint64_t ui) { (void)iframe; (void)ui; ksp("EXCEPTION: general protection"); halt(); } // 13
-void page_fault                   (struct interrupt_frame* iframe, uint64_t ui) { (void)iframe; (void)ui; ksp("EXCEPTION: page fault");         halt(); } // 14
+void invalid_tss                  (struct interrupt_frame* iframe, u64 ui) { (void)iframe; (void)ui; ksp("EXCEPTION: invalid tss");        halt(); } // 10
+void segment_not_present          (struct interrupt_frame* iframe, u64 ui) { (void)iframe; (void)ui; ksp("EXCEPTION: segment not present");halt(); } // 11
+void stack_segment_fault          (struct interrupt_frame* iframe, u64 ui) { (void)iframe; (void)ui; ksp("EXCEPTION: stack segment fault");halt(); } // 12
+void general_protection           (struct interrupt_frame* iframe, u64 ui) { (void)iframe; (void)ui; ksp("EXCEPTION: general protection"); halt(); } // 13
+void page_fault                   (struct interrupt_frame* iframe, u64 ui) { (void)iframe; (void)ui; ksp("EXCEPTION: page fault");         halt(); } // 14
 void floating_point_error         (struct interrupt_frame* iframe             ) { (void)iframe; ksp("floating point error");          halt(); } // 16
-void alignment_check              (struct interrupt_frame* iframe, uint64_t ui) { (void)iframe; (void)ui; ksp("EXCEPTION: alignment check");    halt(); } // 17
+void alignment_check              (struct interrupt_frame* iframe, u64 ui) { (void)iframe; (void)ui; ksp("EXCEPTION: alignment check");    halt(); } // 17
 void machine_check                (struct interrupt_frame* iframe             ) { (void)iframe; ksp("machine_check");                 halt(); } // 18
 void simd_floating_point_exception(struct interrupt_frame* iframe             ) { (void)iframe; ksp("simd floating point exception"); halt(); } // 19
 void virtualization_exception     (struct interrupt_frame* iframe             ) { (void)iframe; ksp("virtualization exception");      halt(); } // 20
 void control_protection_exception (struct interrupt_frame* iframe             ) { (void)iframe; ksp("control protection exception");  halt(); } // 21
 
 
-void idt_set_handler(int interrupt_vector, void* handler_fn, uint8_t type_attribute) {
+void idt_set_handler(int interrupt_vector, void* handler_fn, u8 type_attribute) {
    idt_entry_64_t * entry = &idt[interrupt_vector];
 
-   entry->offset_1        = ((uint64_t)handler_fn & 0xffff);
+   entry->offset_1        = ((u64)handler_fn & 0xffff);
    entry->selector        = 0x28;                                       // offset of the GDT kernel code segment
    entry->ist             = 0;
    entry->type_attributes = type_attribute;
-   entry->offset_2        = ((uint64_t)handler_fn >> 16) & 0xffff;
-   entry->offset_3        = (uint32_t)((uint64_t)handler_fn >> 32) & 0xffffffff;
+   entry->offset_2        = ((u64)handler_fn >> 16) & 0xffff;
+   entry->offset_3        = (u32)((u64)handler_fn >> 32) & 0xffffffff;
    entry->zero            = 0;
 }
 
@@ -165,8 +165,8 @@ void init_pic(void);
 
 void init_idt(void) {
    // setup the interrupt descriptor table
-   idtr.limit = (uint16_t)sizeof(idt_entry_64_t) * 256;
-   idtr.base = (uint64_t)&idt[0];
+   idtr.limit = (u16)sizeof(idt_entry_64_t) * 256;
+   idtr.base = (u64)&idt[0];
 
    idt_set_handler(0,  int_wrapper_0,  0x8E);
    idt_set_handler(1,  int_wrapper_1,  0x8E);
@@ -190,7 +190,6 @@ void init_idt(void) {
    idt_set_handler(20, int_wrapper_20, 0x8E);
    idt_set_handler(21, int_wrapper_21, 0x8E);
 
-    asm volatile ("xchgw %bx, %bx");
    __asm__ volatile("lidt %0" :: "m"(idtr));          // load the new IDT
 
  int flags = 0;

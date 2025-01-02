@@ -76,6 +76,7 @@ Elf64 elf_parse(u8* buf, u64 len) {
     // printf("e_shoff: 0x%lx\n", header.e_shoff );
     // printf("e_phoff: 0x%lx\n", header.e_phoff );
 
+    result.header = header;
     result.s_headers = sheaders;
     result.s_headers_len = header.e_phnum;
     result.p_headers = pheaders;
