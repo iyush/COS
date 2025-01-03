@@ -35,5 +35,5 @@ xorriso -as mkisofs -b boot/limine/limine-bios-cd.bin \
 ./limine/limine bios-install template.iso 2> /dev/null
 echo "Finished building!"
 
-qemu-system-x86_64 -cdrom template.iso -m 256M -serial stdio 
+qemu-system-x86_64 -D ./logs.txt -d int -cdrom template.iso -m 256M -serial stdio 
 

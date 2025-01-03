@@ -67,6 +67,12 @@ void timer(struct regs* r) {
 void all_interrupts_handler(struct regs* r)
 {
    switch (r->interrupt_number) {
+      case 13:
+      {
+         ksp("We got a General Protection Fault!\n");
+         dmpregs(*r);
+         while(1) {}
+      } break;
       case 14:
       {
          ksp("We got a page fault!\n");
@@ -223,7 +229,7 @@ void init_pic(void) {
 
    // disable/mask all the hardware interrupts right now.
    // until we implement keyboard drivers.
-   // pic_mask_all_interrupts();
+   pic_mask_all_interrupts();
 }
 
 #endif
