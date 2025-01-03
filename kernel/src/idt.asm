@@ -4,12 +4,9 @@ global set_page_table_and_jump
 set_page_table_and_jump:
   mov cr3, rdi
   mov rsp, rsi
-  push 0  ; Null return address
-  xor rbp, rbp
-  xor rax, rax
-  xor rbx, rbx
-  xor rcx, rcx
+  push rcx
   jmp rdx
+  ret
 
 %macro INTERRUPT_WRAPPER 1
 global int_wrapper_%1

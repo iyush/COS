@@ -6,7 +6,6 @@ limine
 .DS_Store
 *.o
 *.elf
-!test.elf
 *.bin
 *.iso
 *.swp

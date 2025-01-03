@@ -14,7 +14,14 @@ printf '\x03' | dd of=build/kernel bs=1 count=1 seek=16 conv=notrunc 2> /dev/nul
 rm -rf iso_root
 mkdir -p iso_root/boot
 cp build/kernel iso_root/boot/
-cp binaries/test.elf iso_root/boot/
+
+# build the userland
+pushd userland
+./build.sh
+popd
+cp userland/build/hello-world.elf iso_root/boot/
+
+
 mkdir -p iso_root/boot/limine
 cp limine.cfg limine/limine-bios.sys limine/limine-bios-cd.bin limine/limine-uefi-cd.bin iso_root/boot/limine/
 mkdir -p iso_root/EFI/BOOT
