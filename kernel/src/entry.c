@@ -8,6 +8,9 @@
 #include "stdint.h"
 #include <pmm.h>
 #include "bochs.h"
+#include "asa_limine.h"
+#include "gdt.h"
+
 
 #include "./idt.c"
 #include "./pic.c"
@@ -18,7 +21,7 @@
 #include "vmm.c"
 #include "elf.c"
 #include "task.c"
-#include "asa_limine.h"
+#include "gdt.c"
 
 
 #define MAX_REGION_LIST_TASK 1024
@@ -27,7 +30,7 @@ extern u8 _KERNEL_START;
 extern u8 _KERNEL_END;
 
 
-extern void set_page_table_and_jump(u64 page_table_frame, u64 stack_address, u64 entry_point);
+extern void set_page_table_and_jump(u64 page_table_frame, u64 stack_address, u64 entry_point, u64 return_address);
 
 
 // Halt and catch fire function.
@@ -54,6 +57,14 @@ void task_entry_example2()
         ksp("Goodbye World!");
     }
 }
+
+void hang() {
+    while(1) {
+        ksp("we are hanging!!\n");
+        asm("hlt");
+    }
+}
+
 
 // The following will be our kernel's entry point.
 // If renaming _start() to something else, make sure to change the
@@ -91,6 +102,7 @@ void _start(void)
         ksp("module request failed!\n");
         hcf();
     }
+    gdt_init();
     init_idt();
 
     // Fetch the first framebuffer.
@@ -144,28 +156,6 @@ void _start(void)
         }
     }
 
-    // for (u64 i = 0; i < elf.s_headers_len; i++) {
-    //     Elf64_Shdr sheader = elf.s_headers[i];
-    //     (void) page_table_address;
-    //     if (sheader.sh_type == SHT_PROGBITS) {
-    //         ksp("sheader.sh_size: %lx\n", sheader.sh_size);
-    //         ksp("sheader.sh_addr: %lx\n", sheader.sh_addr);
-    //         ksp("sheader.sh_offset: %lx\n", sheader.sh_offset);
-
-    //         sheader.sh_addr = align_down(sheader.sh_addr);
-    //         sheader.sh_size = align_up(sheader.sh_size);
-    //         sheader.sh_offset = align_down(sheader.sh_offset);
-
-    //         ASSERT(sheader.sh_addr % 0x1000 == 0);
-    //         ASSERT(sheader.sh_offset % 0x1000 == 0);
-
-    //         // reserve the virtual address;
-    //         Region region = region_create(sheader.sh_addr, sheader.sh_size, false, -1);
-    //         regionlist_append(&region_list, region);
-    //         region_map(region, page_table_address, to_lower_half(sheader.sh_offset + (u64)elf_module_start));
-    //     }
-    // }
-
     ksp("pheader %lx\n", (u64) elf.p_headers);
     ksp("sheader %lx\n", (u64) elf.s_headers);
     ksp("entry %lx\n", (u64) elf.header.e_entry);
@@ -189,17 +179,14 @@ void _start(void)
     regionlist_append(&region_list, stack_region);
     region_map(stack_region, page_table_address, (u64)stack_frame);
 
-    ksp("Stack: %lx Entry: %lx CR3: %lx\n", 
-        stack_address,
-        elf.header.e_entry,
-        to_lower_half(page_table_address));
-
     page_table_active_walk_and_print(stack_address, page_table_address);
+    u64 return_address = (u64) &hang;
     bochs_breakpoint();
-    set_page_table_and_jump(to_lower_half(page_table_address), stack_address, elf.header.e_entry);
+    set_page_table_and_jump(to_lower_half(page_table_address), stack_address + stack_size, elf.header.e_entry, return_address);
 
     while(1) {}
 }
+
 
 extern void test_kstring_all();
 
