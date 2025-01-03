@@ -1,12 +1,9 @@
 #include <stdint.h>
 
 
-// Define GDT table with proper alignment
-// Using alignas(0x1000) for extra safety, though 8-byte would be minimum
-struct gdt_entry gdt[7] __attribute__((aligned(0x1000)));
+struct gdt_entry gdt[7] __attribute__((aligned(8)));
 struct gdt_ptr gp __attribute__((aligned(8)));
 
-// Function to set a GDT entry
 void gdt_set_gate(int num, uint32_t base, uint32_t limit, uint8_t access, uint8_t gran) {
     gdt[num].base_low = (base & 0xFFFF);
     gdt[num].base_middle = (base >> 16) & 0xFF;
@@ -18,7 +15,26 @@ void gdt_set_gate(int num, uint32_t base, uint32_t limit, uint8_t access, uint8_
     gdt[num].access = access;
 }
 
-// Function to initialize GDT
+/*
+
+GDT table address should be a virtual addresses (aka linear address).
+
+we are trying to not rock the boat and do the same thing as limine here:
+gdt[0x0000]=<null entry>
+gdt[0x0008]=Code segment, base=0x00000000, limit=0x0000ffff, Execute/Read, Non-Conforming, Accessed, 16-bit
+gdt[0x0010]=Data segment, base=0x00000000, limit=0x0000ffff, Read/Write, Accessed
+gdt[0x0018]=Code segment, base=0x00000000, limit=0xffffffff, Execute/Read, Non-Conforming, Accessed, 32-bit
+gdt[0x0020]=Data segment, base=0x00000000, limit=0xffffffff, Read/Write, Accessed
+gdt[0x0028]=Code segment, base=0x00000000, limit=0x00000000, Execute/Read, Non-Conforming, Accessed, 64-bit
+gdt[0x0030]=Data segment, base=0x00000000, limit=0x00000000, Read/Write, Accessed
+
+why do this when limine already does this for us? 
+ -> because limine maps the gdt table to some other virtual address, that is not
+    inside the kernel source virtual address range. This is an issue when switching page tables
+    because we will lose those mappings in the new page table. If we lose the mappings, the gdt
+    entries are inaccessible and the interrupts will no longer be handled.
+
+*/
 void gdt_init(void) {
     // Setup GDT pointer and limit
     gp.limit = (sizeof(struct gdt_entry) * 7) - 1;

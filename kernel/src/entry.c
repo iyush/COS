@@ -60,7 +60,6 @@ void task_entry_example2()
 
 void hang() {
     while(1) {
-        ksp("we are hanging!!\n");
         asm("hlt");
     }
 }
@@ -181,7 +180,6 @@ void _start(void)
 
     page_table_active_walk_and_print(stack_address, page_table_address);
     u64 return_address = (u64) &hang;
-    bochs_breakpoint();
     set_page_table_and_jump(to_lower_half(page_table_address), stack_address + stack_size, elf.header.e_entry, return_address);
 
     while(1) {}
