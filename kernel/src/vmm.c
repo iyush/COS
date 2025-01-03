@@ -204,7 +204,7 @@ void region_map(Region vm_region, u64 p4_address, u64 page_frame)
 {
     ASSERT(page_frame % 0x1000 == 0);
 
-    u64 page_flags = FRAME_PRESENT;
+    u64 page_flags = FRAME_PRESENT | FRAME_USER;
     if (vm_region.is_writable) {
         page_flags |= FRAME_WRITABLE;
     }

@@ -26,6 +26,7 @@ u64 _pmm_cr4() {
 
 #define FRAME_PRESENT     (1 << 0)
 #define FRAME_WRITABLE    (1 << 1)
+#define FRAME_USER        (1 << 2)
 #define FRAME_HUGE        (1 << 7)
 #define FRAME_SIZE        4096
 

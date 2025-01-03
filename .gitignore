@@ -11,3 +11,4 @@ limine
 *.swp
 isofiles/
 iso_root/
+logs.txt

@@ -5,8 +5,15 @@ set_page_table_and_jump:
   mov cr3, rdi
   mov rsp, rsi
   push rcx
-  jmp rdx
-  ret
+
+  ; Set up iret frame
+  mov rax, rsp
+  push 0x40 | 3         ; SS (stack segment)
+  push rax              ; RSP
+  push 0x202            ; RFLAGS
+  push 0x38 | 3         ; CS (code segment)
+  push rdx              ; RIP (entry point)
+  iretq                 ; Return to user mode
 
 %macro INTERRUPT_WRAPPER 1
 global int_wrapper_%1

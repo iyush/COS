@@ -60,7 +60,7 @@ void task_entry_example2()
 
 void hang() {
     while(1) {
-        asm("hlt");
+        // asm("hlt");
     }
 }
 
@@ -178,9 +178,12 @@ void _start(void)
     regionlist_append(&region_list, stack_region);
     region_map(stack_region, page_table_address, (u64)stack_frame);
 
-    page_table_active_walk_and_print(stack_address, page_table_address);
+    page_table_active_walk_and_print(0xffffffff80006314, page_table_address);
     u64 return_address = (u64) &hang;
+
+    bochs_breakpoint();
     set_page_table_and_jump(to_lower_half(page_table_address), stack_address + stack_size, elf.header.e_entry, return_address);
+
 
     while(1) {}
 }
