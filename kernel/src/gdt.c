@@ -1,20 +1,36 @@
 #include <stdint.h>
+#include "gdt.h"
 
-#define GDT_NUM_ENTRIES 9
+#define GDT_NUM_ENTRIES 10
 struct gdt_entry gdt[GDT_NUM_ENTRIES] __attribute__((aligned(8)));
 struct gdt_ptr gp __attribute__((aligned(8)));
 
-void gdt_set_gate(int num, uint32_t base, uint32_t limit, uint8_t access, uint8_t gran) {
+
+void gdt_set_gate(
+    int num,
+    u32 base,
+    u32 limit,
+    enum gdt_segment_type segment_type,
+    enum gdt_descriptor_type descriptor_type, 
+    enum gdt_privilege_level dpl,
+    enum gdt_limit_granularity granularity) 
+{
+    gdt[num].limit_low = (limit & 0xFFFF);
     gdt[num].base_low = (base & 0xFFFF);
     gdt[num].base_middle = (base >> 16) & 0xFF;
+
+    gdt[num].segment_type = segment_type;
+    gdt[num].descriptor_type = descriptor_type;
+    gdt[num].dpl = dpl;
+    gdt[num].present = GDT_PRESENT;
+
+    gdt[num].limit_high = ((limit >> 16) & 0x0F);
+    gdt[num].avl = 0;
+    gdt[num].l = 1;     // we will always be executing/accessing 64 bit instructions/data.
+    gdt[num].db = 0;    // If the L-bit is set, then the D-bit must be cleared
+    gdt[num].g = granularity;
     gdt[num].base_high = (base >> 24) & 0xFF;
-
-    gdt[num].limit_low = (limit & 0xFFFF);
-    gdt[num].granularity = ((limit >> 16) & 0x0F);
-    gdt[num].granularity |= gran & 0xF0;
-    gdt[num].access = access;
 }
-
 /*
 
 GDT table address should be a virtual addresses (aka linear address).
@@ -44,50 +60,39 @@ void gdt_init(void) {
     gp.base = (uint64_t)&gdt;
 
     // Null descriptor
-    gdt_set_gate(0, 0, 0, 0, 0);
+    struct gdt_entry null_entry = {0};
+    gdt[0] = null_entry;
 
-    // 16-bit Code segment
-    gdt_set_gate(1, 0, 0xFFFF,
-        0x9A,    // Present=1, Ring=0, Code, Non-conforming, Readable, Accessed
-        0x00);   // 16-bit segment
-
-    // Data segment
-    gdt_set_gate(2, 0, 0xFFFF,
-        0x92,    // Present=1, Ring=0, Data, Read/Write, Accessed
-        0x00);   // 16-bit segment
-
-    // 32-bit Code segment
-    gdt_set_gate(3, 0, 0xFFFFFFFF,
-        0x9A,    // Present=1, Ring=0, Code, Non-conforming, Readable, Accessed
-        0xCF);   // 32-bit segment, 4KB granularity
-
-    // Data segment
-    gdt_set_gate(4, 0, 0xFFFFFFFF,
-        0x92,    // Present=1, Ring=0, Data, Read/Write, Accessed
-        0xCF);   // 32-bit segment, 4KB granularity
-
-    // 64-bit Code segment (kernel)
+    // Kernel Code segment
     gdt_set_gate(5, 0, 0,
-        0x9A,    // Present=1, Ring=0, Code, Non-conforming, Readable, Accessed
-        0x20);   // Long mode code segment
+        GDT_SEGMENT_TYPE_CODE_EXECUTE_READ_ACCESSED,
+        GDT_DESCRIPTOR_TYPE_CODE_OR_DATA,
+        GDT_PL_0,
+        GDT_LIMIT_GRANULARITY_BYTE);
 
-    // Data segment (kernel)
+    // Kernel Data segment
     gdt_set_gate(6, 0, 0,
-        0x92,    // Present=1, Ring=0, Data, Read/Write, Accessed
-        0x00);   // Normal segment
+        GDT_SEGMENT_TYPE_DATA_READ_WRITE_ACCESSED,
+        GDT_DESCRIPTOR_TYPE_CODE_OR_DATA,
+        GDT_PL_0,
+        GDT_LIMIT_GRANULARITY_BYTE);
 
-
-    // 64-bit Code segment (user mode)
+    // User Code segment
     gdt_set_gate(7, 0, 0,
-        0xFA,    // Present=1, Ring=3, Code, Non-conforming, Readable, Accessed
-        0x20);   // Long mode code segment
+        GDT_SEGMENT_TYPE_CODE_EXECUTE_READ,
+        GDT_DESCRIPTOR_TYPE_CODE_OR_DATA,
+        GDT_PL_3,
+        GDT_LIMIT_GRANULARITY_BYTE);
 
-    // Data segment (user mode)
+    // User Data segment
     gdt_set_gate(8, 0, 0,
-        0xF2,    // Present=1, Ring=3, Data, Read/Write, Accessed
-        0x00);   // Normal segment
-
+        GDT_SEGMENT_TYPE_DATA_READ_WRITE,
+        GDT_DESCRIPTOR_TYPE_CODE_OR_DATA,
+        GDT_PL_3,
+        GDT_LIMIT_GRANULARITY_BYTE);
 
     // Load GDT
     __asm__ volatile ("lgdt %0" : : "m" (gp));
+    bochs_breakpoint();
+    
 }
