@@ -27,6 +27,8 @@ enum gdt_segment_type {
     GDT_SEGMENT_TYPE_CODE_EXECUTE_ONLY_CONFORMING_ACCESSED = 13,
     GDT_SEGMENT_TYPE_CODE_EXECUTE_READ_CONFORMING = 14,
     GDT_SEGMENT_TYPE_CODE_EXECUTE_READ_CONFORMING_ACCESSED = 15,
+    // FOR TSS
+    GDT_SEGMENT_TYPE_TSS_64_BIT_AVAILABLE = 9
 };
 
 enum gdt_limit_granularity {
@@ -63,14 +65,52 @@ struct gdt_entry {
 
     u8 base_high;
     // u32 base_top;
-    // u32 rest;
+    // u32 reserved;
 } __attribute__((packed));
 
 // GDT pointer structure
 struct gdt_ptr {
-    uint16_t limit;
-    uint64_t base;
+    u16 limit;
+    u64 base;
 } __attribute__((packed));
 
+// GDT entry structure
+struct tss_entry {
+    u16 limit_low;
+    u16 base_low;
+    u8 base_middle;
+
+    u8 segment_type: 4;
+    u8 descriptor_type: 1;
+    u8 dpl: 2;
+    u8 present: 1;
+
+    u8 limit_high: 4;
+    u8 avl: 1;
+    u8 l: 1;
+    u8 db: 1;
+    u8 g: 1;
+
+    u8 base_high;
+    u32 base_top;
+    u32 reserved;
+} __attribute__((packed));
+
+typedef struct TSS {
+    u16 i_o_map_base_address;
+    u16 reserved_1_;
+    u64 reserved_2_;
+    u64 ist7;
+    u64 ist6;
+    u64 ist5;
+    u64 ist4;
+    u64 ist3;
+    u64 ist2;
+    u64 ist1;
+    u64 reserved_3_;
+    u64 rsp2;
+    u64 rsp1;
+    u64 rsp0;
+} __attribute__((packed)) TSS;
 
 #endif

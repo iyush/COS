@@ -30,7 +30,7 @@ extern u8 _KERNEL_START;
 extern u8 _KERNEL_END;
 
 
-extern void set_page_table_and_jump(u64 page_table_frame, u64 stack_address, u64 entry_point, u64 return_address);
+extern void set_page_table_and_jump(u64 page_table_frame, u64 stack_address, u64 entry_point, u64 return_address, TSS* tss);
 
 
 // Halt and catch fire function.
@@ -101,7 +101,7 @@ void _start(void)
         ksp("module request failed!\n");
         hcf();
     }
-    gdt_init();
+    TSS* tss = gdt_init();
     init_idt();
 
     // Fetch the first framebuffer.
@@ -181,9 +181,7 @@ void _start(void)
     page_table_active_walk_and_print(0xffffffff80006314, page_table_address);
     u64 return_address = (u64) &hang;
 
-    bochs_breakpoint();
-    set_page_table_and_jump(to_lower_half(page_table_address), stack_address + stack_size, elf.header.e_entry, return_address);
-
+    set_page_table_and_jump(to_lower_half(page_table_address), stack_address + stack_size, elf.header.e_entry, return_address, tss);
 
     while(1) {}
 }
