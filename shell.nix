@@ -12,4 +12,11 @@ in
       pkgs.xorriso
       pkgs.qemu
     ];
+
+    shellHook = ''
+    alias gs='git status'
+    alias gap='git add -p'
+    alias gd='git diff'
+    alias gds='git diff --staged'
+    '';
   }
