@@ -11,11 +11,13 @@
 #define VGA_WIDTH 80
 
 #define COM1_PORT 0x3f8
+#define BOCHS_PORT 0xe9
 
 static void output_to_console(char * str, int size) {
     int i = 0;
     while (str[i] != '\0' && i < size) {
         outb(COM1_PORT, (uint8_t)str[i]);
+        outb(BOCHS_PORT, (uint8_t)str[i]);
         i++;
     }
 }
