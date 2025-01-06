@@ -12,3 +12,4 @@ limine
 isofiles/
 iso_root/
 logs.txt
+bochs.log

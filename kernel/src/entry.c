@@ -144,7 +144,7 @@ void _start(void)
             ASSERT(pheader.p_offset % 0x1000 == 0);
 
             // reserve the virtual address;
-            Region region = region_create(pheader.p_vaddr, pheader.p_memsz, false, false, -1);
+            Region region = region_create(pheader.p_vaddr, pheader.p_memsz, false);
 
             if (pheader.p_flags & PF_R) region.is_writable = false;
             if (pheader.p_flags & PF_W) region.is_writable = true;
@@ -164,7 +164,7 @@ void _start(void)
 
     // IMPORTANT: map the kernel on higher half.
     u64 kernel_size = align_up((u64)&_KERNEL_END - (u64)&_KERNEL_START);
-    Region kernel_region = region_create(kernel_address_request.response->virtual_base, kernel_size, false, false, -1);
+    Region kernel_region = region_create(kernel_address_request.response->virtual_base, kernel_size, false);
     regionlist_append(&region_list, kernel_region);
     region_map(kernel_region, page_table_address, kernel_address_request.response->physical_base);
 
@@ -174,7 +174,7 @@ void _start(void)
     ASSERT(stack_frame);
     u64 stack_address = 0x7ff000000000;
 
-    Region stack_region = region_create(stack_address, stack_size, false, true, -1);
+    Region stack_region = region_create(stack_address, stack_size, true);
     regionlist_append(&region_list, stack_region);
     region_map(stack_region, page_table_address, (u64)stack_frame);
 

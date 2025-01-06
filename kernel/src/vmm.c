@@ -42,13 +42,11 @@ u64 regionlist_append(RegionList* rl, Region region) {
     return rl->len - 1;
 }
 
-Region region_create(u64 start, u64 size, bool is_free, bool is_writable, u64 next_region_index) {
+Region region_create(u64 start, u64 size, bool is_writable) {
     Region region = {};
     region.start = start;
     region.size = size;
-    region.is_free = is_free;
     region.is_writable = is_writable;
-    region.next_region_index = next_region_index;
     return region;
 }
 
@@ -56,6 +54,7 @@ Region region_create(u64 start, u64 size, bool is_free, bool is_writable, u64 ne
 // static Region regions[MAX_REGIONS];
 // static u64 n_regions = 0;
 
+/*
 static u64 vmm_cr3()
 {
     u64 cr3;
@@ -68,6 +67,7 @@ static u64 vmm_cr3()
 
     return cr3;
 }
+*/
 
 static void page_table_init()
 {
@@ -92,6 +92,7 @@ u64 page_table_create() {
     return to_higher_half(page_table_alloc_frame());
 }
 
+/*
 // find free virtual memory address.
 static Region* region_find_free_virt(RegionList* regions, u64 size)
 {
@@ -174,7 +175,7 @@ Region* reserve_virt(RegionList* regions, u64 address, u64 size)
 
     return regions->buf + (regions->len - 1);
 }
-
+*/
 
 void page_table_active_walk_and_print(u64 vm_addr, u64 p4_table_address) {
     u64 p4_offset = (u64)(((u64)vm_addr >> 39) & 0x01ff);
@@ -268,6 +269,8 @@ void region_map(Region vm_region, u64 p4_address, u64 page_frame)
 
 }
 
+/*
+
 // TODO: do not use this until this is flushed out.
 void * vmalloc_(RegionList* regions,  u64 size)
 {
@@ -286,6 +289,8 @@ void * vmalloc_(RegionList* regions,  u64 size)
 
     return (void*)free_region->start;
 }
+
+*/
 
 // TODO: Regions should be independent per task. Currently it is assuming we are initing a kernel region.
 // static void region_init_()
