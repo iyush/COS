@@ -42,11 +42,10 @@ u64 regionlist_append(RegionList* rl, Region region) {
     return rl->len - 1;
 }
 
-Region region_create(u64 start, u64 size, bool is_writable) {
+Region region_create(u64 start, u64 size) {
     Region region = {};
     region.start = start;
     region.size = size;
-    region.is_writable = is_writable;
     return region;
 }
 
@@ -201,14 +200,16 @@ void page_table_active_walk_and_print(u64 vm_addr, u64 p4_table_address) {
 
 }
 
-void region_map(Region vm_region, u64 p4_address, u64 page_frame)
+void region_map(Region vm_region, u64 p4_address, u64 page_frame, u64 flags)
 {
     ASSERT(page_frame % 0x1000 == 0);
 
-    u64 page_flags = FRAME_PRESENT | FRAME_USER;
-    if (vm_region.is_writable) {
-        page_flags |= FRAME_WRITABLE;
-    }
+    u64 page_flags = flags;
+
+    // u64 page_flags = FRAME_PRESENT | FRAME_USER;
+    // if (vm_region.is_writable) {
+    //     page_flags |= FRAME_WRITABLE;
+    // }
 
     u64 vm_addr = vm_region.start;
 

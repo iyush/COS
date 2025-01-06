@@ -25,12 +25,6 @@ u64 _pmm_cr4() {
 #define BITMAP_ADDR      0xffffffffA0000000
 #define FRAME_SIZE        4096
 
-enum {
-   FRAME_PRESENT = (1 << 0),
-   FRAME_WRITABLE = (1 << 1),
-   FRAME_USER = (1 << 2),
-   FRAME_HUGE = (1 << 7),
-};
 
 
 void pmm_init(struct limine_memmap_request memmap_request, struct limine_hhdm_request hhdm_request, struct limine_kernel_address_request kernel_address_request);

@@ -144,14 +144,16 @@ void _start(void)
             ASSERT(pheader.p_offset % 0x1000 == 0);
 
             // reserve the virtual address;
-            Region region = region_create(pheader.p_vaddr, pheader.p_memsz, false);
+            Region region = region_create(pheader.p_vaddr, pheader.p_memsz);
 
-            if (pheader.p_flags & PF_R) region.is_writable = false;
-            if (pheader.p_flags & PF_W) region.is_writable = true;
+            u64 flags = FRAME_PRESENT | FRAME_USER;
+
+            // if (pheader.p_flags & PF_R) region.is_writable = false;
+            if (pheader.p_flags & PF_W) flags |= FRAME_WRITABLE; // region.is_writable = true;
 
 
             regionlist_append(&region_list, region);
-            region_map(region, page_table_address, to_lower_half(pheader.p_offset + (u64)elf_module_start));
+            region_map(region, page_table_address, to_lower_half(pheader.p_offset + (u64)elf_module_start), flags);
         }
     }
 
@@ -164,9 +166,9 @@ void _start(void)
 
     // IMPORTANT: map the kernel on higher half.
     u64 kernel_size = align_up((u64)&_KERNEL_END - (u64)&_KERNEL_START);
-    Region kernel_region = region_create(kernel_address_request.response->virtual_base, kernel_size, false);
+    Region kernel_region = region_create(kernel_address_request.response->virtual_base, kernel_size);
     regionlist_append(&region_list, kernel_region);
-    region_map(kernel_region, page_table_address, kernel_address_request.response->physical_base);
+    region_map(kernel_region, page_table_address, kernel_address_request.response->physical_base, FRAME_PRESENT | FRAME_USER);
 
     // IMPORTANT: create a stack for the executable
     u64 stack_size = 0x100000; // 1Mib;
@@ -174,9 +176,9 @@ void _start(void)
     ASSERT(stack_frame);
     u64 stack_address = 0x7ff000000000;
 
-    Region stack_region = region_create(stack_address, stack_size, true);
+    Region stack_region = region_create(stack_address, stack_size);
     regionlist_append(&region_list, stack_region);
-    region_map(stack_region, page_table_address, (u64)stack_frame);
+    region_map(stack_region, page_table_address, (u64)stack_frame, FRAME_PRESENT | FRAME_WRITABLE | FRAME_USER);
 
     page_table_active_walk_and_print(0xffffffff80006314, page_table_address);
     u64 return_address = (u64) &hang;
