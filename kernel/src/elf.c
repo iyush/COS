@@ -33,7 +33,7 @@ Elf64 elf_parse(u8* buf, u64 len) {
     assert(header.e_ident[EI_DATA] == ELFDATA2LSB, "only ELFDATA2LSB supported!");
     assert(header.e_ident[EI_OSABI] == ELFOSABI_SYSV, "only ELFOSABI_SYSV supported!");
 
-    assert(header.e_type == ET_EXEC, "we only support ET_EXEC for now!");
+    assert(header.e_type == ET_EXEC || header.e_type == ET_DYN, "we only support ET_EXEC or ET_DYN for now!");
     assert(header.e_phoff > 0, "we expect ph_off to be present!");
     assert(header.e_phnum > 0, "we expect ph_num to be present!");
     assert(header.e_shoff > 0, "we expect sh_off to be present!");

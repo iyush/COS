@@ -23,23 +23,25 @@ typedef struct {
 } __attribute__((packed)) idtr_t;
 
 void dmpregs(struct regs r) {
-   ksp("rax     %lx\n", r.rax);
-   ksp("rbx     %lx\n", r.rbx);
-   ksp("rcx     %lx\n", r.rcx);
-   ksp("rdx     %lx\n", r.rdx);
-   ksp("rbp     %lx\n", r.rbp);
-   ksp("rsi     %lx\n", r.rsi);
-   ksp("rdi     %lx\n", r.rdi);
-   ksp("rsp     %lx\n", r.rsp);
-   ksp("r8      %lx\n", r.r8);
-   ksp("r9      %lx\n", r.r9);
-   ksp("r10     %lx\n", r.r10);
-   ksp("r11     %lx\n", r.r11);
-   ksp("r12     %lx\n", r.r12);
-   ksp("r13     %lx\n", r.r13);
-   ksp("r14     %lx\n", r.r14);
-   ksp("r15     %lx\n", r.r15);
-   ksp("rflags  %lx\n", r.rflags);
+   ksp("rax     0x%lx\n", r.rax);
+   ksp("rbx     0x%lx\n", r.rbx);
+   ksp("rcx     0x%lx\n", r.rcx);
+   ksp("rdx     0x%lx\n", r.rdx);
+   ksp("rbp     0x%lx\n", r.rbp);
+   ksp("rsi     0x%lx\n", r.rsi);
+   ksp("rdi     0x%lx\n", r.rdi);
+   ksp("rsp     0x%lx\n", r.rsp);
+   ksp("r8      0x%lx\n", r.r8);
+   ksp("r9      0x%lx\n", r.r9);
+   ksp("r10     0x%lx\n", r.r10);
+   ksp("r11     0x%lx\n", r.r11);
+   ksp("r12     0x%lx\n", r.r12);
+   ksp("r13     0x%lx\n", r.r13);
+   ksp("r14     0x%lx\n", r.r14);
+   ksp("r15     0x%lx\n", r.r15);
+   ksp("rflags  0x%lx\n", r.rflags);
+   ksp("error_code  0x%lx\n", r.error_code);
+   ksp("rip  0x%lx\n", r.rip);
 }
 /* Interrupt and Exceptions */
 static void halt() { while(1) {} }
@@ -56,8 +58,6 @@ struct interrupt_frame
     u64 sp;
     u64 ss;
 };
-
-//static int i = 0;
 
 void timer(struct regs* r) {
     task_schedule_next(r);
@@ -76,13 +76,16 @@ void all_interrupts_handler(struct regs* r)
       case 14:
       {
          ksp("We got a page fault!\n");
+         bochs_breakpoint();
+         ksp("GDT access at: 0x%lx\n", (u64)&gdt);
          u64 cr2 = 0;
          asm volatile("mov %%cr2, %0" : "=r" (cr2));
-         ksp("Page fault happend at address: %lx\n", cr2);
+         ksp("Page fault happend at address: 0x%lx\n", cr2);
          dmpregs(*r);
          while(1){ }
       } break;
       case 32:
+         ksp("Timer timer!\n");
          timer(r);
          break;
       case 33:
@@ -229,7 +232,7 @@ void init_pic(void) {
 
    // disable/mask all the hardware interrupts right now.
    // until we implement keyboard drivers.
-   pic_mask_all_interrupts();
+   // pic_mask_all_interrupts(); // here masking means disabling
 }
 
 #endif

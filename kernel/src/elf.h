@@ -69,6 +69,16 @@ enum {
 };
 
 
+// p_flags
+enum {
+    PF_X = 0x1, // Execute permission
+    PF_W = 0x2, // Write permission
+    PF_R = 0x4, // Read permission
+    PF_MASKOS = 0x00FF0000, // These flag bits are reserved for environment specific use
+    PF_MASKPROC = 0xFF000000, // These flag bits are reserved for processor specific use
+};
+
+
 // Section Types, sh_type
 enum {
     SHT_NULL = 0, // Marks an unused section header
@@ -96,14 +106,6 @@ enum {
     SHF_EXECINSTR = 0x4, // Section contains executable instructions
     SHF_MASKOS = 0x0F000000, // Environment-specific use
     SHF_MASKPROC = 0xF0000000, // Processor-specific use
-};
-
-enum {
-    PF_X = 0x1, // Execute permission
-    PF_W = 0x2, // Write permission
-    PF_R = 0x4, // Read permission
-    PF_MASKOS = 0x00FF0000, // These flag bits are reserved for environment specific use
-    PF_MASKPROC = 0xFF000000, // These flag bits are reserved for processor specific use
 };
 
 

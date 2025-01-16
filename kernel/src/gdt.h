@@ -10,6 +10,9 @@ enum gdt_privilege_level {
     GDT_PL_3 = 3,
 };
 
+#define GDT_NUM_ENTRIES 10
+#define TSS_NUM_ENTRIES 1
+    
 enum gdt_segment_type {
     GDT_SEGMENT_TYPE_DATA_READ_ONLY = 0,
     GDT_SEGMENT_TYPE_DATA_READ_ONLY_ACCESSED = 1,
@@ -74,7 +77,42 @@ struct gdt_ptr {
     u64 base;
 } __attribute__((packed));
 
-// GDT entry structure
+// typedef struct TSS {
+//     u16 i_o_map_base_address;
+//     u16 reserved_1_;
+//     u64 reserved_2_;
+//     u64 ist7;
+//     u64 ist6;
+//     u64 ist5;
+//     u64 ist4;
+//     u64 ist3;
+//     u64 ist2;
+//     u64 ist1;
+//     u64 reserved_3_;
+//     u64 rsp2;
+//     u64 rsp1;
+//     u64 rsp0;
+// } __attribute__((packed)) TSS;
+
+
+typedef struct TSS {
+    u32 reserved_0;
+    u64 rsp0;
+    u64 rsp1;
+    u64 rsp2;
+    u64 reserved_3_;
+    u64 ist1;
+    u64 ist2;
+    u64 ist3;
+    u64 ist4;
+    u64 ist5;
+    u64 ist6;
+    u64 ist7;
+    u64 reserved_2_;
+    u16 reserved_1_;
+    u16 i_o_map_base_address;
+} __attribute__((packed)) TSS;
+
 struct tss_entry {
     u16 limit_low;
     u16 base_low;
@@ -96,21 +134,12 @@ struct tss_entry {
     u32 reserved;
 } __attribute__((packed));
 
-typedef struct TSS {
-    u16 i_o_map_base_address;
-    u16 reserved_1_;
-    u64 reserved_2_;
-    u64 ist7;
-    u64 ist6;
-    u64 ist5;
-    u64 ist4;
-    u64 ist3;
-    u64 ist2;
-    u64 ist1;
-    u64 reserved_3_;
-    u64 rsp2;
-    u64 rsp1;
-    u64 rsp0;
-} __attribute__((packed)) TSS;
+
+struct gdt_full {
+    struct gdt_entry gdt_entries[GDT_NUM_ENTRIES];  
+    struct tss_entry tss_entries[TSS_NUM_ENTRIES];
+} __attribute__((packed));
+
+struct gdt_full gdt __attribute__((aligned(8)));
 
 #endif

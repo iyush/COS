@@ -53,8 +53,7 @@ Region region_create(u64 start, u64 size) {
 // static Region regions[MAX_REGIONS];
 // static u64 n_regions = 0;
 
-/*
-static u64 vmm_cr3()
+u64 vmm_cr3()
 {
     u64 cr3;
 
@@ -66,7 +65,6 @@ static u64 vmm_cr3()
 
     return cr3;
 }
-*/
 
 static void page_table_init()
 {
@@ -184,6 +182,32 @@ void page_table_active_walk_and_print(u64 vm_addr, u64 p4_table_address) {
 
     u64 * p4_table  =  (u64*)(p4_table_address);
 
+    u64 p3_table_frame = (p4_table[p4_offset] & ~(1UL << 63)) >> 12;
+    u64* p3_table = (void*)((p3_table_frame << 12) + hhdm_offset);
+
+    u64 p2_table_frame = (p3_table[p3_offset] & ~(1UL << 63)) >> 12;
+    u64* p2_table = (void*)((p2_table_frame << 12) + hhdm_offset);
+
+    u64 p1_table_frame = (p2_table[p2_offset] & ~(1UL << 63)) >> 12;
+    u64* p1_table = (void*)((p1_table_frame << 12) + hhdm_offset);
+
+    ksp("----- walking the page table -----\n");
+    ksp("virtual_address: 0x%lx\n", vm_addr);
+    ksp("    (0x%lx)p4 table[%ld]: 0x%lx\n", (u64)p4_table, p4_offset, p4_table[p4_offset]);
+    ksp("    (0x%lx)p3 table[%ld]: 0x%lx\n", (u64)p3_table, p3_offset, p3_table[p3_offset]);
+    ksp("    (0x%lx)p2 table[%ld]: 0x%lx\n", (u64)p2_table, p2_offset, p2_table[p2_offset]);
+    ksp("    (0x%lx)p1 table[%ld]: 0x%lx\n", (u64)p1_table, p1_offset, p1_table[p1_offset]);
+
+}
+
+u64 vmm_physical_frame(u64 p4_table_address, u64 vm_addr) {
+    u64 p4_offset = (u64)(((u64)vm_addr >> 39) & 0x01ff);
+    u64 p3_offset = (u64)(((u64)vm_addr >> 30) & 0x01ff);
+    u64 p2_offset = (u64)(((u64)vm_addr >> 21) & 0x01ff);
+    u64 p1_offset = (u64)(((u64)vm_addr >> 12) & 0x01ff);
+
+    u64 * p4_table  =  (u64*)(p4_table_address);
+
     u64 p3_table_frame = p4_table[p4_offset] >> 12;
     u64* p3_table = (void*)((p3_table_frame << 12) + hhdm_offset);
 
@@ -193,12 +217,10 @@ void page_table_active_walk_and_print(u64 vm_addr, u64 p4_table_address) {
     u64 p1_table_frame = p2_table[p2_offset] >> 12;
     u64* p1_table = (void*)((p1_table_frame << 12) + hhdm_offset);
 
-    ksp("p4 table: Stack page entry flags: %lx\n", p4_table[p4_offset] & 0xFFF);
-    ksp("p3 table: Stack page entry flags: %lx\n", p3_table[p3_offset] & 0xFFF);
-    ksp("p2 table: Stack page entry flags: %lx\n", p2_table[p2_offset] & 0xFFF);
-    ksp("p1 table: Stack page entry flags: %lx\n", p1_table[p1_offset] & 0xFFF);
-
+    u64 physical_frame = p1_table[p1_offset] & 0x000ffffffffff000;
+    return physical_frame;
 }
+
 
 void region_map(Region vm_region, u64 p4_address, u64 page_frame, u64 flags)
 {
@@ -231,10 +253,10 @@ void region_map(Region vm_region, u64 p4_address, u64 page_frame, u64 flags)
             p4_table[p4_offset] = (u64)(p3_table_frame) | page_flags;
             p3_table = (void*)(p3_table_frame + hhdm_offset);
         } else {
-            u64 p3_table_frame = p4_table[p4_offset] >> 12;
+            u64 p3_table_frame = (p4_table[p4_offset] & ~(1UL << 63)) >> 12;
+            p4_table[p4_offset] |= page_flags;
             p3_table = (void*)((p3_table_frame << 12) + hhdm_offset);
         }
-
 
         if (!(p3_table[p3_offset] & FRAME_PRESENT))
         {
@@ -242,7 +264,8 @@ void region_map(Region vm_region, u64 p4_address, u64 page_frame, u64 flags)
             p3_table[p3_offset] = (u64)(p2_table_frame) | page_flags;
             p2_table = (void*)(p2_table_frame + hhdm_offset);
         } else {
-            u64 p2_table_frame = p3_table[p3_offset] >> 12;
+            u64 p2_table_frame = (p3_table[p3_offset]  & ~(1UL << 63)) >> 12;
+            p3_table[p3_offset] |= page_flags;
             p2_table = (void*)((p2_table_frame << 12) + hhdm_offset);
         }
 
@@ -252,7 +275,8 @@ void region_map(Region vm_region, u64 p4_address, u64 page_frame, u64 flags)
             p2_table[p2_offset] = (u64)(p1_table_frame) | page_flags;
             p1_table = (void*)(p1_table_frame + hhdm_offset);
         } else {
-            u64 p1_table_frame = p2_table[p2_offset] >> 12;
+            u64 p1_table_frame = (p2_table[p2_offset] & ~(1UL << 63)) >> 12;
+            p2_table[p2_offset] |= page_flags;
             p1_table = (void*)((p1_table_frame << 12) + hhdm_offset);
         }
 
@@ -260,12 +284,11 @@ void region_map(Region vm_region, u64 p4_address, u64 page_frame, u64 flags)
         {
             p1_table[p1_offset] = (u64)(page_frame) | page_flags;
         } else {
-            // todo("virtual already mapped!");
+            p1_table[p1_offset] |= page_flags;
         }
 
-
-        vm_addr = vm_addr + 4096; // move to next page.
-        page_frame += 4096;
+        vm_addr = vm_addr + FRAME_SIZE; // move to next page.
+        page_frame += FRAME_SIZE;
     }
 
 }

@@ -22,6 +22,7 @@ struct __attribute__((packed)) regs {
 
    u64 rflags;
    u64 interrupt_number;
+   u64 error_code;
    u64 rip;
 };
 

@@ -1,17 +1,8 @@
 #include <stdint.h>
 #include "gdt.h"
 
-#define GDT_NUM_ENTRIES 10
-#define TSS_NUM_ENTRIES 1
 
-struct gdt_full {
-    struct gdt_entry gdt_entries[GDT_NUM_ENTRIES];  
-    struct tss_entry tss_entries[TSS_NUM_ENTRIES];
-} __attribute__((packed));
-
-static struct gdt_full gdt __attribute__((aligned(8)));
 static struct TSS tss;
-
 static struct gdt_ptr gp __attribute__((aligned(8)));
 
 void gdt_set_gate(
@@ -89,13 +80,13 @@ why do this when limine already does this for us?
     entries are inaccessible and the interrupts will no longer be handled.
 
 */
-TSS* gdt_init(void) {
+void gdt_init(u64 kernel_stack_ptr_address) {
     // Setup GDT pointer and limit
     gp.limit = (sizeof(struct gdt_full)) - 1;
     gp.base = (uint64_t)&gdt;
 
     memset(&tss, 0, sizeof(struct TSS));
-    tss.i_o_map_base_address = sizeof(TSS);
+    // tss.i_o_map_base_address = sizeof(TSS);
 
     // Null descriptor
     struct gdt_entry null_entry = {0};
@@ -134,9 +125,24 @@ TSS* gdt_init(void) {
     gdt_set_tss(0, (u64)&tss, 0x67, GDT_SEGMENT_TYPE_TSS_64_BIT_AVAILABLE, GDT_LIMIT_GRANULARITY_BYTE);
 
     // Load GDT
+    tss.rsp0 = kernel_stack_ptr_address;
     __asm__ volatile ("lgdt %0" : : "m" (gp));    
     asm volatile("ltr %%ax" : : "a"((GDT_NUM_ENTRIES * 8))); // TSS selector
-    bochs_breakpoint();
 
-    return &tss;
+    for (int i = 0; i < GDT_NUM_ENTRIES; i++) {
+        ksp("    (%d) limit_low: %d ", i, gdt.gdt_entries[i].limit_low);
+        ksp("base_low: %d ", gdt.gdt_entries[i].base_low);
+        ksp("base_middle: %d ", gdt.gdt_entries[i].base_middle);
+        ksp("segment_type: %d ", gdt.gdt_entries[i].segment_type);
+        ksp("descriptor_type: %d ", gdt.gdt_entries[i].descriptor_type);
+        ksp("dpl: %d ", gdt.gdt_entries[i].dpl);
+        ksp("present: %d ", gdt.gdt_entries[i].present);
+        ksp("limit_high: %d ", gdt.gdt_entries[i].limit_high);
+        ksp("avl: %d ", gdt.gdt_entries[i].avl);
+        ksp("l: %d ", gdt.gdt_entries[i].l);
+        ksp("db: %d ", gdt.gdt_entries[i].db);
+        ksp("g: %d ", gdt.gdt_entries[i].g);
+        ksp("base_high: %d ", gdt.gdt_entries[i].base_high);
+        ksp("\n");
+    }
 }
