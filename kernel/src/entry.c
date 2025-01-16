@@ -68,6 +68,25 @@ void hang() {
     }
 }
 
+void set_page_table_and_jump(u64 page_table_frame, u64 stack_address, u64 entry_point, u64 return_address) {
+    __asm__ volatile(
+        "\n mov %0, %%cr3"                  // load the page table
+        "\n mov %1, %%rsp"                  // change the stack pointer
+        "\n pushq %2"                       // push the return address
+        // now are setting up the iretq
+        "\n mov %%rsp, %%rax"               // save the current stack ptr
+        "\n pushq $0x40 | 3"                // stack segment (ss)
+        "\n pushq %%rax"                    // rsp (this is the stack address that we saved earlier)
+        "\n pushq $0x202"                   // rflags
+        "\n pushq $0x38 | 3"                // code segment (cs)
+        "\n pushq %3"                       // jump destination
+        "\n iretq"
+        :
+        : "r"(page_table_frame), "r"(stack_address), "r"(return_address), "r"(entry_point)
+        : "rdi", "rax"
+        );
+}
+
 
 // The following will be our kernel's entry point.
 // If renaming _start() to something else, make sure to change the
