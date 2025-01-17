@@ -10,6 +10,7 @@
 #include "bochs.h"
 #include "asa_limine.h"
 #include "gdt.h"
+#include "cpu.h"
 
 
 #include "./idt.c"
@@ -62,18 +63,28 @@ void task_entry_example2()
     }
 }
 
-void hang() {
+ __attribute__((naked)) void hang() {
+    __asm__ volatile("nop");
+    __asm__ volatile("nop");
+    __asm__ volatile("nop");
+    __asm__ volatile("nop");
+    __asm__ volatile("nop");
+    __asm__ volatile("nop");
+    __asm__ volatile("nop");
     while(1) {
-        // asm("hlt");
+        ksp("hello hello!\n");
+        asm("hlt");
     }
 }
 
 void set_page_table_and_jump(u64 page_table_frame, u64 stack_address, u64 entry_point, u64 return_address) {
+    bochs_breakpoint();
     __asm__ volatile(
         "\n mov %0, %%cr3"                  // load the page table
         "\n mov %1, %%rsp"                  // change the stack pointer
         "\n pushq %2"                       // push the return address
-        // now are setting up the iretq
+
+        // now are setting up the iretq for usermode executable
         "\n mov %%rsp, %%rax"               // save the current stack ptr
         "\n pushq $0x40 | 3"                // stack segment (ss)
         "\n pushq %%rax"                    // rsp (this is the stack address that we saved earlier)
@@ -225,8 +236,19 @@ void _start(void)
     region_map(stack_region, page_table_address, (u64)stack_frame, FRAME_PRESENT | FRAME_WRITABLE | FRAME_USER);
 
     page_table_active_walk_and_print(kernel_stack_ptr, page_table_address);
-    set_page_table_and_jump(to_lower_half(page_table_address), stack_address + stack_size, program_elf.header.e_entry, (u64) &hang);
 
+    // for syscalls:
+    // IF (CS.L ≠ 1 ) or (IA32_EFER.LMA ≠ 1) or (IA32_EFER.SCE ≠ 1)
+    // Things we need to add to the MSR:
+    // 1. RIP := IA32_LSTAR;
+    // 2. CS.Selector := IA32_STAR[47:32] AND FFFCH
+    // 
+
+    wrmsr(CPU_IA32_EFER, 0b10000000001); // we are enabling fast syscall in the processor.
+    wrmsr(CPU_IA32_LSTAR, (u64) &hang);  // this is syscall entry function, currently hang function
+    wrmsr(CPU_IA32_STAR, (0x28UL << 32)); // this is our CS for kernel.
+
+    set_page_table_and_jump(to_lower_half(page_table_address), stack_address + stack_size, program_elf.header.e_entry, (u64) &hang);
     while(1) {}
 }
 

@@ -13,4 +13,4 @@ _start: # _start is the entry point known to the linker
 
     mov %eax, %edi    # transfer the return of main to the first argument of _exit
     xor %eax, %eax    # per ABI and compatibility with icc
-    ret
+    syscall

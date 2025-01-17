@@ -76,8 +76,6 @@ void all_interrupts_handler(struct regs* r)
       case 14:
       {
          ksp("We got a page fault!\n");
-         bochs_breakpoint();
-         ksp("GDT access at: 0x%lx\n", (u64)&gdt);
          u64 cr2 = 0;
          asm volatile("mov %%cr2, %0" : "=r" (cr2));
          ksp("Page fault happend at address: 0x%lx\n", cr2);
@@ -85,7 +83,7 @@ void all_interrupts_handler(struct regs* r)
          while(1){ }
       } break;
       case 32:
-         ksp("Timer timer!\n");
+         // ksp("Timer timer!\n");
          timer(r);
          break;
       case 33:
