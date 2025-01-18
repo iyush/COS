@@ -5,9 +5,6 @@
 #include <stdbool.h>
 #include <pmm.h>
 
-u8* bmp;
-u64 bmp_size;
-
 
 // GCC and Clang reserve the right to generate calls to the following
 // 4 functions even if they are not directly called.
@@ -79,7 +76,7 @@ int memcmp(const void *s1, const void *s2, size_t n)
     return 0;
 }
 
-void bmp_set_free(u64 frame_ptr, u64 n_frames)
+void bmp_set_free(PmmAllocator* allocator, u64 frame_ptr, u64 n_frames)
 {
     u64 frame_start = frame_ptr / FRAME_SIZE;
 
@@ -93,11 +90,11 @@ void bmp_set_free(u64 frame_ptr, u64 n_frames)
         frame_big_index = (frame / 8);
         frame_sma_index = (frame % 8);
 
-        bmp[frame_big_index] = bmp[frame_big_index] & ~(1 << frame_sma_index);
+        allocator->bmp[frame_big_index] = allocator->bmp[frame_big_index] & ~(1 << frame_sma_index);
     }
 }
 
-void bmp_set_used(void* frame_ptr, u64 n_frames)
+void bmp_set_used(PmmAllocator* allocator, void* frame_ptr, u64 n_frames)
 {
     u64 frame_start = (u64)frame_ptr / FRAME_SIZE;
 
@@ -111,12 +108,14 @@ void bmp_set_used(void* frame_ptr, u64 n_frames)
         frame_big_index = (frame / 8);
         frame_sma_index = (frame % 8);
 
-        bmp[frame_big_index] = bmp[frame_big_index] | (1 << frame_sma_index);
+        allocator->bmp[frame_big_index] = allocator->bmp[frame_big_index] | (1 << frame_sma_index);
     }
 }
 
-void pmm_init(struct limine_memmap_request memmap_request, struct limine_hhdm_request hhdm_request, struct limine_kernel_address_request kernel_address_request)
+PmmAllocator pmm_init(struct limine_memmap_request memmap_request, struct limine_hhdm_request hhdm_request, struct limine_kernel_address_request kernel_address_request)
 {
+    PmmAllocator allocator = {0};
+
     u64 highest_frame_top = 0;
     for (u64 i = 0; i < memmap_request.response->entry_count; i++)
     {
@@ -128,7 +127,7 @@ void pmm_init(struct limine_memmap_request memmap_request, struct limine_hhdm_re
         }
     }
 
-    bmp_size = ((highest_frame_top + FRAME_SIZE) / FRAME_SIZE) / 8;
+    allocator.bmp_size = ((highest_frame_top + FRAME_SIZE) / FRAME_SIZE) / 8;
     u64 biggest_usable_base = 0;
     u64 biggest_usable_length = 0;
     for (u64 i = 0; i < memmap_request.response->entry_count; i++)
@@ -138,7 +137,7 @@ void pmm_init(struct limine_memmap_request memmap_request, struct limine_hhdm_re
         u64 base = memmap_request.response->entries[i]->base;
 
 
-        if (length > bmp_size && type == LIMINE_MEMMAP_USABLE)
+        if (length > allocator.bmp_size && type == LIMINE_MEMMAP_USABLE)
         {
             if (length > biggest_usable_length)
             {
@@ -159,14 +158,14 @@ void pmm_init(struct limine_memmap_request memmap_request, struct limine_hhdm_re
         ksp("%lx %lx %s\n", base, length, type_str);
     }
 
-    ksp("bmp_size %lx can fit in region with base %lx and length %lx\n", bmp_size, biggest_usable_base, biggest_usable_length);
+    ksp("bmp_size %lx can fit in region with base %lx and length %lx\n", allocator.bmp_size, biggest_usable_base, biggest_usable_length);
 
-    bmp = (u8 *)biggest_usable_base + hhdm_request.response->offset;
+    allocator.bmp = (u8 *)biggest_usable_base + hhdm_request.response->offset;
 
     ksp("kernel physical start: %lx\n", kernel_address_request.response->physical_base);
     ksp("kernel virtual start: %lx\n", kernel_address_request.response->virtual_base);
 
-    memset(bmp, 0xff, bmp_size);
+    memset(allocator.bmp, 0xff, allocator.bmp_size);
 
     for (u64 i = 0; i < memmap_request.response->entry_count; i++)
     {
@@ -179,19 +178,21 @@ void pmm_init(struct limine_memmap_request memmap_request, struct limine_hhdm_re
             // offset as we don't want the bitmap itself to be usable
             if (base == biggest_usable_base)
             {
-                bmp_set_free(base + bmp_size, (length - bmp_size) / FRAME_SIZE);
+                bmp_set_free(&allocator, base + allocator.bmp_size, (length - allocator.bmp_size) / FRAME_SIZE);
             }
             else
             {
-                bmp_set_free(base, length / FRAME_SIZE);
+                bmp_set_free(&allocator, base, length / FRAME_SIZE);
             }
         }
     }
     // for null frame.
-    bmp[0] = bmp[0] & ~(1 << 0);
+    allocator.bmp[0] = allocator.bmp[0] & ~(1 << 0);
+
+    return allocator;
 }
 
-void * pmm_find_free_frame(u64 n_frames)
+void * pmm_find_free_frame(PmmAllocator *allocator, u64 n_frames)
 {
     if (n_frames == 0)
     {
@@ -201,12 +202,12 @@ void * pmm_find_free_frame(u64 n_frames)
     u64 start_frame = 0;
     u64 end_frame = 0;
 
-    for (u64 i = 0; i < bmp_size; i++)
+    for (u64 i = 0; i < allocator->bmp_size; i++)
     {
         for (u64 j = 0; j <= 8; j++)
         {
             end_frame = i * 8 + j;
-            if (((bmp[i] >> j) & 1) == 1)
+            if (((allocator->bmp[i] >> j) & 1) == 1)
             {
                 start_frame = end_frame;
             }
@@ -221,17 +222,17 @@ void * pmm_find_free_frame(u64 n_frames)
     return NULL;
 }
 
-void * pmm_alloc_frame(u64 n_frames)
+void * pmm_alloc_frame(PmmAllocator * allocator, u64 n_frames)
 {
     // ksp("nframes %ld\n", n_frames);
-    void * ptr = pmm_find_free_frame(n_frames);
+    void * ptr = pmm_find_free_frame(allocator, n_frames);
     if (ptr) {
-        bmp_set_used(ptr, n_frames);
+        bmp_set_used(allocator, ptr, n_frames);
     }
     return ptr;
 }
 
-void pmm_dealloc_frame(void* ptr, u64 n_frame)
+void pmm_dealloc_frame(PmmAllocator * allocator, void* ptr, u64 n_frame)
 {
-    bmp_set_free((u64)ptr, n_frame);
+    bmp_set_free(allocator, (u64)ptr, n_frame);
 }

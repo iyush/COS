@@ -129,14 +129,14 @@ void _start(void)
         fb_ptr[i * (framebuffer->pitch / 4) + i] = 0xffffff;
     }
 
-    pmm_init(memmap_request, hhdm_request, kernel_address_request);
-    vmm_init(hhdm_request);
+    PmmAllocator pmm_allocator = pmm_init(memmap_request, hhdm_request, kernel_address_request);
+    vmm_init(&pmm_allocator, hhdm_request);
 
     ASSERT_EQ((u32)module_request.response->module_count, 1); // make sure that we have atleast one file.
 
     u64 current_page_table_address = to_higher_half(vmm_cr3());
     u64 page_table_address = page_table_create();
-    RegionList region_list = regionlist_create(MAX_REGION_LIST_TASK);
+    RegionList region_list = regionlist_create(&pmm_allocator, MAX_REGION_LIST_TASK);
 
 
     { // parsing kernel elf
@@ -207,7 +207,7 @@ void _start(void)
 
     // IMPORTANT: create a stack for the executable
     u64 stack_size = 0x100000; // 1Mib;
-    void* stack_frame = pmm_alloc_frame(stack_size >> 12);
+    void* stack_frame = pmm_alloc_frame(&pmm_allocator, stack_size >> 12);
     ASSERT(stack_frame);
     u64 stack_address = 0x7ff000000000;
 

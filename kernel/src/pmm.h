@@ -26,8 +26,13 @@ u64 _pmm_cr4() {
 #define FRAME_SIZE        4096
 
 
+typedef struct PmmAllocator {
+    u8* bmp;
+    u64 bmp_size;
+} PmmAllocator;
 
-void pmm_init(struct limine_memmap_request memmap_request, struct limine_hhdm_request hhdm_request, struct limine_kernel_address_request kernel_address_request);
-void * pmm_alloc_frame(u64 n_frames);
+
+PmmAllocator pmm_init(struct limine_memmap_request memmap_request, struct limine_hhdm_request hhdm_request, struct limine_kernel_address_request kernel_address_request);
+void * pmm_alloc_frame(PmmAllocator* allocator, u64 n_frames);
 
 #endif

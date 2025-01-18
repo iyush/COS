@@ -25,7 +25,7 @@ enum frame_flags : u64 {
 
 void page_table_active_walk_and_print(u64 vm_addr, u64 p4_table_address);
 
-RegionList regionlist_create(u64 max_size);
+RegionList regionlist_create(PmmAllocator * pmm_allocator, u64 max_size);
 u64 regionlist_append(RegionList* regions, Region region);
 Region region_create(u64 start, u64 size);
 

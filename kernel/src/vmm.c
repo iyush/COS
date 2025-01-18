@@ -23,11 +23,11 @@ u64 align_down(u64 addr) {
 }
 
 
-RegionList regionlist_create(u64 max_regions) {
+RegionList regionlist_create(PmmAllocator * allocator, u64 max_regions) {
     RegionList rl;
 
     u64 max_pages = align_up(max_regions * sizeof(Region));
-    void* regionlist_frame = pmm_alloc_frame(max_pages);
+    void* regionlist_frame = pmm_alloc_frame(allocator, max_pages);
 
     rl.buf = (Region*)to_higher_half((u64)regionlist_frame);
     rl.len = 0;
@@ -66,9 +66,9 @@ u64 vmm_cr3()
     return cr3;
 }
 
-static void page_table_init()
+static void page_table_init(PmmAllocator * allocator)
 {
-    page_table_frames = (u64)pmm_alloc_frame(MAX_PAGE_TABLE_COUNT);
+    page_table_frames = (u64)pmm_alloc_frame(allocator, MAX_PAGE_TABLE_COUNT);
     if (page_table_frames == 0) {
         TODO("init page tables failed!");
     }
@@ -330,9 +330,9 @@ void * vmalloc_(RegionList* regions,  u64 size)
 // }
 
 
-void vmm_init(struct limine_hhdm_request hhdm_request)
+void vmm_init(PmmAllocator * allocator, struct limine_hhdm_request hhdm_request)
 {
     hhdm_offset = hhdm_request.response->offset;
-    page_table_init();
+    page_table_init(allocator);
     // region_init();
 }
