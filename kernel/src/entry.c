@@ -21,7 +21,6 @@
 #include "pmm.c"
 #include "vmm.c"
 #include "elf.c"
-#include "task.c"
 #include "gdt.c"
 
 
@@ -35,9 +34,6 @@ static u8 kernel_stack[KERNEL_STACK_SIZE] __attribute__((aligned(8)));
 static u64 kernel_stack_ptr = (u64) &kernel_stack + KERNEL_STACK_SIZE;
 
 
-extern void set_page_table_and_jump(u64 page_table_frame, u64 stack_address, u64 entry_point, u64 return_address);
-
-
 // Halt and catch fire function.
 static void hcf(void)
 {
@@ -45,21 +41,6 @@ static void hcf(void)
     for (;;)
     {
         asm("hlt");
-    }
-}
-
-
-void task_entry_example1()
-{
-    while (1) {
-        ksp("Hello world!");
-    }
-}
-
-void task_entry_example2()
-{
-    while (1) {
-        ksp("Goodbye World!");
     }
 }
 
@@ -72,7 +53,6 @@ void task_entry_example2()
     __asm__ volatile("nop");
     __asm__ volatile("nop");
     while(1) {
-        ksp("hello hello!\n");
         asm("hlt");
     }
 }
@@ -235,8 +215,6 @@ void _start(void)
     regionlist_append(&region_list, stack_region);
     region_map(stack_region, page_table_address, (u64)stack_frame, FRAME_PRESENT | FRAME_WRITABLE | FRAME_USER);
 
-    page_table_active_walk_and_print(kernel_stack_ptr, page_table_address);
-
     // for syscalls:
     // IF (CS.L ≠ 1 ) or (IA32_EFER.LMA ≠ 1) or (IA32_EFER.SCE ≠ 1)
     // Things we need to add to the MSR:
@@ -249,24 +227,5 @@ void _start(void)
     wrmsr(CPU_IA32_STAR, (0x28UL << 32)); // this is our CS for kernel.
 
     set_page_table_and_jump(to_lower_half(page_table_address), stack_address + stack_size, program_elf.header.e_entry, (u64) &hang);
-    while(1) {}
-}
-
-
-extern void test_kstring_all();
-
-void __assert_fail(const char *assertion, const char *file, unsigned int line, const char *function)
-{
-    ksp("!!! Assertion failed for expression: %s\n", assertion);
-    ksp("                  in               : %s[%d:]\n", file, line);
-    ksp("                  in function      : %s\n", function);
-    while (1)
-    {
-    }
-}
-
-void panic(char * msg)
-{
-    ksp("PANIC!!!!!!\n\t %s\n", msg);
     while(1) {}
 }

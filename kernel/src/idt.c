@@ -5,7 +5,6 @@
 #include "./kio.h"
 #include "./pic.c"
 #include "idt.h"
-#include "task.h"
 
 typedef struct {
    u16 offset_1;        // offset bits 0..15
@@ -43,8 +42,6 @@ void dmpregs(struct regs r) {
    ksp("error_code  0x%lx\n", r.error_code);
    ksp("rip  0x%lx\n", r.rip);
 }
-/* Interrupt and Exceptions */
-static void halt() { while(1) {} }
 
 static idt_entry_64_t idt[256];
 
@@ -60,7 +57,7 @@ struct interrupt_frame
 };
 
 void timer(struct regs* r) {
-    task_schedule_next(r);
+   (void)r;
    pic_send_end_of_interrupt();
 } // 21
 
@@ -96,15 +93,6 @@ void all_interrupts_handler(struct regs* r)
    };
 }
 
-// __attribute__ ((interrupt))
-// static void generic_exception_handler(struct interrupt_frame *frame, u64 error_code)
-// {
-//    (void)frame;
-//    (void)error_code;
-//    ksp("we received an generic exception\n");
-//    while (1) {}
-// }
-
 extern void int_wrapper_0();
 extern void int_wrapper_1();
 extern void int_wrapper_2();
@@ -131,29 +119,6 @@ extern void int_wrapper_21();
 // hardware interrupts
 extern __attribute__((interrupt)) void int_wrapper_32(struct interrupt_frame*, u64);
 extern __attribute__((interrupt)) void int_wrapper_33(struct interrupt_frame*, u64);
-
-
-void divide_error                 (struct interrupt_frame* iframe             ) { (void)iframe; ksp("divide error");                  halt(); } // 0
-void debug                        (struct interrupt_frame* iframe             ) { (void)iframe; ksp("debug");                         halt(); } // 1
-void nmi_interrupt                (struct interrupt_frame* iframe             ) { (void)iframe; ksp("nmi interrupt");                 halt(); } // 2
-void breakpoint                   (struct interrupt_frame* iframe             ) { (void)iframe; ksp("breakpoint");                    halt(); } // 3
-void overflow                     (struct interrupt_frame* iframe             ) { (void)iframe; ksp("overflow error");                halt(); } // 4
-void bound_range_exceeded         (struct interrupt_frame* iframe             ) { (void)iframe; ksp("bound range exceeded");          halt(); } // 5
-void invalid_opcode               (struct interrupt_frame* iframe             ) { (void)iframe; ksp("invalid opcode");                halt(); } // 6
-void device_not_available         (struct interrupt_frame* iframe             ) { (void)iframe; ksp("device not available");          halt(); } // 7
-void double_fault                 (struct interrupt_frame* iframe, u64 ui) { (void)iframe; (void)ui; ksp("EXCEPTION: double fault");       halt(); } // 8
-void co_processor_segment_overrun (struct interrupt_frame* iframe             ) { (void)iframe; ksp("co-processor segment overrun");  halt(); } // 9
-void invalid_tss                  (struct interrupt_frame* iframe, u64 ui) { (void)iframe; (void)ui; ksp("EXCEPTION: invalid tss");        halt(); } // 10
-void segment_not_present          (struct interrupt_frame* iframe, u64 ui) { (void)iframe; (void)ui; ksp("EXCEPTION: segment not present");halt(); } // 11
-void stack_segment_fault          (struct interrupt_frame* iframe, u64 ui) { (void)iframe; (void)ui; ksp("EXCEPTION: stack segment fault");halt(); } // 12
-void general_protection           (struct interrupt_frame* iframe, u64 ui) { (void)iframe; (void)ui; ksp("EXCEPTION: general protection"); halt(); } // 13
-void page_fault                   (struct interrupt_frame* iframe, u64 ui) { (void)iframe; (void)ui; ksp("EXCEPTION: page fault");         halt(); } // 14
-void floating_point_error         (struct interrupt_frame* iframe             ) { (void)iframe; ksp("floating point error");          halt(); } // 16
-void alignment_check              (struct interrupt_frame* iframe, u64 ui) { (void)iframe; (void)ui; ksp("EXCEPTION: alignment check");    halt(); } // 17
-void machine_check                (struct interrupt_frame* iframe             ) { (void)iframe; ksp("machine_check");                 halt(); } // 18
-void simd_floating_point_exception(struct interrupt_frame* iframe             ) { (void)iframe; ksp("simd floating point exception"); halt(); } // 19
-void virtualization_exception     (struct interrupt_frame* iframe             ) { (void)iframe; ksp("virtualization exception");      halt(); } // 20
-void control_protection_exception (struct interrupt_frame* iframe             ) { (void)iframe; ksp("control protection exception");  halt(); } // 21
 
 
 void idt_set_handler(int interrupt_vector, void* handler_fn, u8 type_attribute) {
@@ -199,7 +164,7 @@ void init_idt(void) {
 
    __asm__ volatile("lidt %0" :: "m"(idtr));          // load the new IDT
 
- int flags = 0;
+   int flags = 0;
    init_pic();
    __asm__ volatile("sti");                           // set the interrupt flag
 
@@ -210,9 +175,9 @@ void init_idt(void) {
 
    if (flags) {
     ksp("Interrupts are enabled\n");
-} else {
-    ksp("Interrupts are still disabled\n");
-}
+   } else {
+       ksp("Interrupts are still disabled\n");
+   }
 
 }
 
