@@ -13,7 +13,7 @@
 #define COM1_PORT 0x3f8
 #define BOCHS_PORT 0xe9
 
-static void output_to_console(char * str, int size) {
+void output_to_console(char * str, int size) {
     int i = 0;
     while (str[i] != '\0' && i < size) {
         outb(COM1_PORT, (uint8_t)str[i]);
@@ -22,13 +22,13 @@ static void output_to_console(char * str, int size) {
     }
 }
 
+static char buffer[BUF_MAX] = {0};
+
 __attribute__((format(printf, 1, 2)))
 void ksp(char * f_str, ...) {
     va_list args;
     va_start(args, f_str);
 
-    char buffer[BUF_MAX];
-    
     int size = kvsprintf(buffer, f_str, args);
 
     output_to_console(buffer, size);

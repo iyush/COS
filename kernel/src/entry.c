@@ -44,19 +44,6 @@ static void hcf(void)
     }
 }
 
- __attribute__((naked)) void hang() {
-    __asm__ volatile("nop");
-    __asm__ volatile("nop");
-    __asm__ volatile("nop");
-    __asm__ volatile("nop");
-    __asm__ volatile("nop");
-    __asm__ volatile("nop");
-    __asm__ volatile("nop");
-    while(1) {
-        asm("hlt");
-    }
-}
-
 void set_page_table_and_jump(u64 page_table_frame, u64 stack_address, u64 entry_point, u64 return_address) {
     bochs_breakpoint();
     __asm__ volatile(
@@ -222,10 +209,11 @@ void _start(void)
     // 2. CS.Selector := IA32_STAR[47:32] AND FFFCH
     // 
 
-    wrmsr(CPU_IA32_EFER, 0b10000000001); // we are enabling fast syscall in the processor.
-    wrmsr(CPU_IA32_LSTAR, (u64) &hang);  // this is syscall entry function, currently hang function
-    wrmsr(CPU_IA32_STAR, (0x28UL << 32)); // this is our CS for kernel.
+    wrmsr(CPU_IA32_EFER, rdmsr(CPU_IA32_EFER) | (1UL << 0)); // we are enabling fast syscall in the processor.
+    wrmsr(CPU_IA32_FSTAR, 0x43700); // Clear IF,TF,AC, and DF
+    wrmsr(CPU_IA32_LSTAR, (u64) &int_wrapper_99);    // this is syscall entry function, currently hang function
+    wrmsr(CPU_IA32_STAR, rdmsr(CPU_IA32_STAR) | (0x28UL << 32) | (0x38UL << 48)); // this is our CS for kernel.
 
-    set_page_table_and_jump(to_lower_half(page_table_address), stack_address + stack_size, program_elf.header.e_entry, (u64) &hang);
+    set_page_table_and_jump(to_lower_half(page_table_address), stack_address + stack_size, program_elf.header.e_entry, (u64) &int_wrapper_99);
     while(1) {}
 }

@@ -3,6 +3,7 @@
 #define CPU_IA32_EFER 0xC0000080
 #define CPU_IA32_STAR 0xC0000081
 #define CPU_IA32_LSTAR 0xC0000082
+#define CPU_IA32_FSTAR 0xC0000084
 
 u32 cpuid() {
     u32 cpuid;

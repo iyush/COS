@@ -68,7 +68,7 @@ void pic_remap(u8 master_offset, u8 slave_offset) {
 }
 
 // 'masking' here means disabling by setting the bit to be 1.
-void pic_mask_all_interrupts(void) {
+void pic_disable_all_interrupts(void) {
    outb(PIC_MASTER_DATA, 0xff);
    outb(PIC_SLAVE_DATA, 0xff);
 }

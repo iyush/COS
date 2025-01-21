@@ -244,7 +244,6 @@ int kvsprintf(char* buffer, char * f_str, va_list args) {
                 _parse_inner_string(f_str, buffer, &curr_str_idx, &i, is_long, args);
             }
         }
-        //assert(curr_str_idx < buffer_size);
         i++;
     }
     va_end(args);

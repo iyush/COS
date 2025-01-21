@@ -22,13 +22,6 @@ int_wrapper_%1:
   push rcx
   push rbx
   push rax
-  ; push rip
-  ; push cs
-  ; push ds
-  ; push ss
-  ; push fs
-  ; push gs
-
   ;; here we go.............
   cld
   mov rdi, rsp    ; Pass pointer to register structure as first argument
@@ -85,7 +78,54 @@ INTERRUPT_WRAPPER 32 ; timer
 INTERRUPT_WRAPPER 33 ; keyboard
 
 
+global int_wrapper_99
+int_wrapper_99:
+  ;; this should be in opposite order of struct regs
+  push 99
+  pushfq
+  push r15
+  push r14
+  push r13
+  push r12
+  push r11
+  push r10
+  push r9
+  push r8
+  push rsp
+  push rdi
+  push rsi
+  push rbp
+  push rdx
+  push rcx
+  push rbx
+  push rax
+  ;; here we go.............
+  cld
+  mov rdi, rsp    ; Pass pointer to register structure as first argument
+  call all_interrupts_handler
 
+  pop rax
+  pop rbx
+  pop rcx
+  pop rdx
+  pop rbp
+  pop rsi
+  pop rdi
+  pop rsp
+  pop r8
+  pop r9
+  pop r10
+  pop r11
+  pop r12
+  pop r13
+  pop r14
+  pop r15
+  popfq
+
+  ;; clean up the stack due to the interrupt number
+  add rsp, 8
+
+  o64 sysret
 
 
 

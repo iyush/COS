@@ -21,6 +21,15 @@ typedef struct {
 	u64	base;
 } __attribute__((packed)) idtr_t;
 
+
+void hang() {
+
+   while (1) {
+      __asm__ volatile("hlt");
+      
+   }
+
+}
 void dmpregs(struct regs r) {
    ksp("rax     0x%lx\n", r.rax);
    ksp("rbx     0x%lx\n", r.rbx);
@@ -86,6 +95,23 @@ void all_interrupts_handler(struct regs* r)
       case 33:
          //TODO: keyboard
          break;
+      case 99: {
+                  switch(r->rax) {
+                     case 0: 
+                        {
+                           hang();
+                        }
+                        break;
+                     case 1:
+                        {
+                           output_to_console((char*)r->rdi, r->rsi);
+                        }
+                        break;
+                  };
+               }
+         break;
+         
+
       default:
          ksp("we received an generic interrupt %ld\n", r->interrupt_number);
          dmpregs(*r);
@@ -119,6 +145,10 @@ extern void int_wrapper_21();
 // hardware interrupts
 extern __attribute__((interrupt)) void int_wrapper_32(struct interrupt_frame*, u64);
 extern __attribute__((interrupt)) void int_wrapper_33(struct interrupt_frame*, u64);
+
+
+// syscall
+extern __attribute__((interrupt)) void int_wrapper_99(struct interrupt_frame*, u64);
 
 
 void idt_set_handler(int interrupt_vector, void* handler_fn, u8 type_attribute) {
@@ -195,7 +225,7 @@ void init_pic(void) {
 
    // disable/mask all the hardware interrupts right now.
    // until we implement keyboard drivers.
-   // pic_mask_all_interrupts(); // here masking means disabling
+   // pic_disable_all_interrupts(); // here masking means disabling
 }
 
 #endif
