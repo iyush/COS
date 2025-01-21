@@ -17,9 +17,9 @@ u32 cpuid() {
 
 void wrmsr(u32 msr, u64 value) {
     asm __volatile__(
-        "\n wrmsr"
+        "wrmsr"
         :
-        : "edx"((u32)(value >> 32)), "eax"((u32)(value & 0xffffffff)), "ecx"(msr)
+        : "d"((u32)(value >> 32)), "a"((u32)(value & 0xffffffff)), "c"(msr)
         :
         );
 }
@@ -31,7 +31,7 @@ u64 rdmsr(u32 msr) {
     asm __volatile__(
         "\n mov %0, %%ecx"
         "\n rdmsr"
-        : "=eax" (low), "=edx"(high)
+        : "=a" (low), "=d"(high)
         : "r"(msr)
         :
         );
