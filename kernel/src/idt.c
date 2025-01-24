@@ -99,6 +99,8 @@ void all_interrupts_handler(struct regs* r)
                   switch(r->rax) {
                      case 0: 
                         {
+                           // cleanup();
+                           ksp("Program has exited!\n");
                            hang();
                         }
                         break;

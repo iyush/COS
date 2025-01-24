@@ -5,7 +5,13 @@ set -e
 rm -rf build/
 mkdir -p build/
 
-x86_64-elf-gcc -g -pipe -Wall -Wextra -Werror -Wno-missing-field-initializers -std=gnu11 -ffreestanding -fno-stack-protector -fno-stack-check -fno-lto -fPIE  -march=x86-64 -mno-80387 -mno-mmx -mno-sse -mno-sse2 -mno-red-zone -I lib/ -I kernel/src -I limine/  -MMD -MP -c kernel/src/entry.c -o build/entry.c.o
+x86_64-elf-gcc \
+        -g -pipe -Wall -Wextra -Werror -std=gnu11 \
+        -nodefaultlibs -nostdlib -fno-builtin -ffreestanding \
+        -fno-stack-protector -fno-stack-check -fno-lto -fPIE \
+        -march=x86-64 -mno-80387 -mno-mmx -mno-sse -mno-sse2 \
+        -mno-red-zone -I lib/ -I kernel/src -I limine/  -MMD -MP -c kernel/src/entry.c -o build/entry.c.o
+
 nasm -F dwarf -g -f elf64 kernel/src/idt.asm -o build/idt.asm.o
 
 x86_64-elf-ld build/entry.c.o build/idt.asm.o  -m elf_x86_64 -nostdlib -pie -z text -z max-page-size=0x1000 -T kernel/linker.ld -o build/kernel

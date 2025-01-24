@@ -1,3 +1,7 @@
+#define ASAOS 1
+
+
+#if ASAOS
 #include "../../kernel/src/kstring.h"
 #include "../../kernel/src/kstring.c"
 
@@ -36,14 +40,54 @@ void printf(char * f_str, ...) {
     va_end(args);
 }
 
-
-int main () {
-	char * result = "Hello world!";
-	int total = 0;
-	while (!result) {
-		total += *result;
-		result++;
+int pow(int base, int exp) {
+	int result = 0;
+	for (int i = 0; i < exp; i++) {
+		result *= result;
 	}
-	printf("%s\n", result);
-	return total;
+	return result;
+}
+
+int exit(int status) {
+	(void) status;
+	sysexit();
+}
+#else
+#include <stdio.h>
+#include <stdint.h>
+#include <math.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef uint64_t u64;
+
+#endif
+
+
+int str_to_int(char * str, u64 len, u64 base) {
+	int result = 0;
+	for (u64 i = 0; i < len; i++) {
+		if (str[i] >= 48 && str[i] <= 57) {
+			int indiv_int = str[i] - 48;
+			result += indiv_int * pow(base, len - i - 1);
+		} else {
+			break;
+		}
+	}
+	return result;
+}
+
+int main (int argc, char** argv) {
+	if (argc < 3) {
+		printf("./hello-world <str> <ncount>\n");
+		exit(1);
+	}
+	char * str = argv[1];
+	int ncount = str_to_int(argv[2], strlen(argv[2]), 10);
+
+	int i = 0;
+	while (i < ncount) {
+		printf("%s %d\n", str, i + 1); 
+		i++;
+	}
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-void vga_clear();
+void vga_clear(void);
 
 void output_to_console(char * str, int size);
 __attribute__((format(printf, 1, 2))) void ksp(char * f_str, ...);

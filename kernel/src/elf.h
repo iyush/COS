@@ -156,6 +156,7 @@ typedef struct
 
 
 typedef struct {
+    u64 elf_module_start;
     Elf64_Ehdr header;
 
     Elf64_Shdr* s_headers;

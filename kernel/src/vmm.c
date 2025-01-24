@@ -290,7 +290,6 @@ void region_map(Region vm_region, u64 p4_address, u64 page_frame, u64 flags)
         vm_addr = vm_addr + FRAME_SIZE; // move to next page.
         page_frame += FRAME_SIZE;
     }
-
 }
 
 /*
