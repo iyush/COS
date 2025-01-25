@@ -1,9 +1,45 @@
+//
+// Physical Memory Manager
+//
+
 #include "stdint.h"
 #include <limine.h>
 #include "stdint.h"
 #include <stddef.h>
 #include <stdbool.h>
-#include <pmm.h>
+
+#define FRAME_SIZE 4096
+
+u64 _pmm_cr4() {
+   u64 cr4;
+
+    asm __volatile__ (
+            "mov %%cr4, %0\n"
+            :"=r"(cr4)
+            :
+            :
+          );
+
+    return cr4;
+}
+
+
+
+typedef struct PmmAllocator {
+    u8* bmp;
+    u64 bmp_size;
+} PmmAllocator;
+
+// Frame describes a physical address.
+typedef struct Frame {
+    u64 ptr;
+} Frame;
+
+Frame frame_create(u64 ptr) {
+    return (Frame){
+        .ptr = ptr
+    };
+}
 
 
 // GCC and Clang reserve the right to generate calls to the following
@@ -76,8 +112,10 @@ int memcmp(const void *s1, const void *s2, size_t n)
     return 0;
 }
 
-void bmp_set_free(PmmAllocator* allocator, u64 frame_ptr, u64 n_frames)
+void bmp_set_free(PmmAllocator* allocator, Frame frame_to_free, u64 n_frames)
 {
+    u64 frame_ptr = frame_to_free.ptr;
+
     u64 frame_start = frame_ptr / FRAME_SIZE;
 
     u64 frame = 0;
@@ -178,11 +216,11 @@ PmmAllocator pmm_init(struct limine_memmap_request memmap_request, struct limine
             // offset as we don't want the bitmap itself to be usable
             if (base == biggest_usable_base)
             {
-                bmp_set_free(&allocator, base + allocator.bmp_size, (length - allocator.bmp_size) / FRAME_SIZE);
+                bmp_set_free(&allocator, frame_create(base + allocator.bmp_size), (length - allocator.bmp_size) / FRAME_SIZE);
             }
             else
             {
-                bmp_set_free(&allocator, base, length / FRAME_SIZE);
+                bmp_set_free(&allocator, frame_create(base), length / FRAME_SIZE);
             }
         }
     }
@@ -234,5 +272,5 @@ void * pmm_alloc_frame(PmmAllocator * allocator, u64 n_frames)
 
 void pmm_dealloc_frame(PmmAllocator * allocator, void* ptr, u64 n_frame)
 {
-    bmp_set_free(allocator, (u64)ptr, n_frame);
+    bmp_set_free(allocator, frame_create((u64)ptr), n_frame);
 }

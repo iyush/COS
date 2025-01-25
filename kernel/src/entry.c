@@ -6,7 +6,6 @@
 #include "./idt.h"
 #include "./io.h"
 #include "stdint.h"
-#include <pmm.h>
 #include "bochs.h"
 #include "asa_limine.h"
 #include "gdt.h"
