@@ -132,9 +132,9 @@ void bmp_set_free(PmmAllocator* allocator, Frame frame_to_free, u64 n_frames)
     }
 }
 
-void bmp_set_used(PmmAllocator* allocator, void* frame_ptr, u64 n_frames)
+void bmp_set_used(PmmAllocator* allocator, Frame frame_ptr, u64 n_frames)
 {
-    u64 frame_start = (u64)frame_ptr / FRAME_SIZE;
+    u64 frame_start = (u64)frame_ptr.ptr / FRAME_SIZE;
 
     u64 frame = 0;
     u64 frame_big_index = 0;
@@ -230,11 +230,11 @@ PmmAllocator pmm_init(struct limine_memmap_request memmap_request, struct limine
     return allocator;
 }
 
-void * pmm_find_free_frame(PmmAllocator *allocator, u64 n_frames)
+Frame pmm_find_free_frame(PmmAllocator *allocator, u64 n_frames)
 {
     if (n_frames == 0)
     {
-        return NULL;
+        return frame_create(0);
     }
 
     u64 start_frame = 0;
@@ -252,25 +252,25 @@ void * pmm_find_free_frame(PmmAllocator *allocator, u64 n_frames)
 
             if ((end_frame - start_frame) > n_frames)
             {
-                return (void*)((start_frame + 1) * FRAME_SIZE);
+                return frame_create((start_frame + 1) * FRAME_SIZE);
             }
         }
     }
 
-    return NULL;
+    return frame_create(0);
 }
 
-void * pmm_alloc_frame(PmmAllocator * allocator, u64 n_frames)
+Frame pmm_alloc_frame(PmmAllocator * allocator, u64 n_frames)
 {
     // ksp("nframes %ld\n", n_frames);
-    void * ptr = pmm_find_free_frame(allocator, n_frames);
-    if (ptr) {
-        bmp_set_used(allocator, ptr, n_frames);
+    Frame frame = pmm_find_free_frame(allocator, n_frames);
+    if (frame.ptr) {
+        bmp_set_used(allocator, frame, n_frames);
     }
-    return ptr;
+    return frame;
 }
 
-void pmm_dealloc_frame(PmmAllocator * allocator, void* ptr, u64 n_frame)
+void pmm_dealloc_frame(PmmAllocator * allocator, Frame frame_ptr, u64 n_frame)
 {
-    bmp_set_free(allocator, frame_create((u64)ptr), n_frame);
+    bmp_set_free(allocator, frame_ptr, n_frame);
 }

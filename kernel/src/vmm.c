@@ -21,9 +21,9 @@ RegionList regionlist_create(PmmAllocator * allocator, u64 max_regions) {
     RegionList rl;
 
     u64 max_pages = align_up(max_regions * sizeof(Region));
-    void* regionlist_frame = pmm_alloc_frame(allocator, max_pages);
+    Frame regionlist_frame = pmm_alloc_frame(allocator, max_pages);
 
-    rl.buf = (Region*)to_higher_half((u64)regionlist_frame);
+    rl.buf = (Region*)to_higher_half(regionlist_frame.ptr);
     rl.len = 0;
     rl.max_regions = max_regions;
     return rl;
@@ -60,14 +60,14 @@ u64 vmm_cr3()
     return cr3;
 }
 
-u64 page_table_alloc_frame(PmmAllocator* allocator)
+Frame page_table_alloc_frame(PmmAllocator* allocator)
 {
-    return (u64)pmm_alloc_frame(allocator, 1);
+    return pmm_alloc_frame(allocator, 1);
 }
 
 static void page_table_dealloc_frame(PmmAllocator* allocator, PageTableEntry* page_table)
 {
-    pmm_dealloc_frame(allocator, (void*)to_lower_half((u64)page_table), 1);
+    pmm_dealloc_frame(allocator, frame_create(to_lower_half((u64)page_table)), 1);
 }
 
 /*
@@ -181,7 +181,7 @@ void page_table_active_walk_and_print(u64 vm_addr, u64 p4_table_address) {
 
 }
 
-u64 vmm_physical_frame(u64 p4_table_address, u64 vm_addr) {
+Frame vmm_physical_frame(u64 p4_table_address, u64 vm_addr) {
     u64 p4_offset = (u64)(((u64)vm_addr >> 39) & 0x01ff);
     u64 p3_offset = (u64)(((u64)vm_addr >> 30) & 0x01ff);
     u64 p2_offset = (u64)(((u64)vm_addr >> 21) & 0x01ff);
@@ -199,12 +199,12 @@ u64 vmm_physical_frame(u64 p4_table_address, u64 vm_addr) {
     PageTableEntry* p1_table = (void*)to_higher_half(p1_table_frame << 12);
 
     u64 physical_frame = p1_table[p1_offset].page_frame << 12;
-    return physical_frame;
+    return frame_create(physical_frame);
 }
 
-void region_map(PmmAllocator* pmm_allocator, Region vm_region, u64 p4_address, u64 page_frame, u64 flags)
+void region_map(PmmAllocator* pmm_allocator, Region vm_region, u64 p4_address, Frame page_frame, u64 flags)
 {
-    ASSERT(page_frame % 0x1000 == 0);
+    ASSERT(page_frame.ptr % 0x1000 == 0);
 
     u64 page_flags = flags;
 
@@ -229,7 +229,7 @@ void region_map(PmmAllocator* pmm_allocator, Region vm_region, u64 p4_address, u
 
         if (!p4_table[p4_offset].is_present)
         {
-            u64 p3_table_frame = page_table_alloc_frame(pmm_allocator);
+            u64 p3_table_frame = page_table_alloc_frame(pmm_allocator).ptr;
             p4_table[p4_offset].raw = (u64)(p3_table_frame) | page_flags;
             p3_table = (PageTableEntry*)to_higher_half(p3_table_frame);
         } else {
@@ -240,7 +240,7 @@ void region_map(PmmAllocator* pmm_allocator, Region vm_region, u64 p4_address, u
 
         if (!p3_table[p3_offset].is_present)
         {
-            u64 p2_table_frame = page_table_alloc_frame(pmm_allocator);
+            u64 p2_table_frame = page_table_alloc_frame(pmm_allocator).ptr;
             p3_table[p3_offset].raw = (u64)(p2_table_frame) | page_flags;
             p2_table = (PageTableEntry*)to_higher_half(p2_table_frame);
         } else {
@@ -251,7 +251,7 @@ void region_map(PmmAllocator* pmm_allocator, Region vm_region, u64 p4_address, u
 
         if (!p2_table[p2_offset].is_present)
         {
-            u64 p1_table_frame = page_table_alloc_frame(pmm_allocator);
+            u64 p1_table_frame = page_table_alloc_frame(pmm_allocator).ptr;
             p2_table[p2_offset].raw = (u64)(p1_table_frame) | page_flags;
             p1_table = (PageTableEntry*)to_higher_half(p1_table_frame);
         } else {
@@ -262,13 +262,13 @@ void region_map(PmmAllocator* pmm_allocator, Region vm_region, u64 p4_address, u
 
         if (!p1_table[p1_offset].is_present)
         {
-            p1_table[p1_offset].raw = (u64)(page_frame) | page_flags;
+            p1_table[p1_offset].raw = (u64)(page_frame.ptr) | page_flags;
         } else {
             p1_table[p1_offset].raw |= page_flags;
         }
 
         vm_addr = vm_addr + FRAME_SIZE; // move to next page.
-        page_frame += FRAME_SIZE;
+        page_frame.ptr += FRAME_SIZE;
     }
 }
 

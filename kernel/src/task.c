@@ -6,7 +6,7 @@
 #define STACK_SIZE 0x100000 // 1Mib;
 
 Task task_init(PmmAllocator* pmm_allocator, u64 current_page_table_address, Elf64 program_elf, s64 argc, char** argv) {
-    u64 page_table_address = to_higher_half(page_table_alloc_frame(pmm_allocator));
+    u64 page_table_address = to_higher_half(page_table_alloc_frame(pmm_allocator).ptr);
     RegionList region_list = regionlist_create(pmm_allocator, MAX_REGION_LIST_TASK);
 
     { // parsing kernel elf
@@ -24,7 +24,7 @@ Task task_init(PmmAllocator* pmm_allocator, u64 current_page_table_address, Elf6
 
                 ASSERT(pheader.p_vaddr % 0x1000 == 0);
 
-                u64 physical_frame = vmm_physical_frame(current_page_table_address, pheader.p_vaddr);
+                Frame physical_frame = vmm_physical_frame(current_page_table_address, pheader.p_vaddr);
 
                 // reserve the virtual address;
                 Region region = region_create(pheader.p_vaddr, pheader.p_memsz);
@@ -62,7 +62,7 @@ Task task_init(PmmAllocator* pmm_allocator, u64 current_page_table_address, Elf6
             if (pheader.p_flags & PF_W) flags |= FRAME_WRITABLE; // region.is_writable = true;
 
             regionlist_append(&region_list, region);
-            region_map(pmm_allocator, region, page_table_address, to_lower_half(pheader.p_offset + (u64)program_elf.elf_module_start), flags);
+            region_map(pmm_allocator, region, page_table_address, frame_create(to_lower_half(pheader.p_offset + (u64)program_elf.elf_module_start)), flags);
 
             if (pheader.p_vaddr + pheader.p_memsz > max_v_address) max_v_address = pheader.p_vaddr + pheader.p_memsz;
         }
@@ -76,12 +76,12 @@ Task task_init(PmmAllocator* pmm_allocator, u64 current_page_table_address, Elf6
 
 
     // IMPORTANT: create a stack for the executable
-    void* stack_frame = pmm_alloc_frame(pmm_allocator, STACK_SIZE >> 12);
-    ASSERT(stack_frame);
+    Frame stack_frame = pmm_alloc_frame(pmm_allocator, STACK_SIZE >> 12);
+    ASSERT(stack_frame.ptr);
 
     Region stack_region = region_create(STACK_BEGIN_ADDRESS, STACK_SIZE);
     regionlist_append(&region_list, stack_region);
-    region_map(pmm_allocator, stack_region, page_table_address, (u64)stack_frame, FRAME_PRESENT | FRAME_WRITABLE | FRAME_USER);
+    region_map(pmm_allocator, stack_region, page_table_address, stack_frame, FRAME_PRESENT | FRAME_WRITABLE | FRAME_USER);
 
     // NOTE: setup the space for argv..............
     u64 argv_size = 0;
@@ -92,9 +92,9 @@ Task task_init(PmmAllocator* pmm_allocator, u64 current_page_table_address, Elf6
     u64 argv_size_pages = align_up(argv_size);
     Region argv_region = region_create(max_v_address, argv_size_pages);
     regionlist_append(&region_list, argv_region);
-    void* argv_frame = pmm_alloc_frame(pmm_allocator, argv_size_pages);
-    ASSERT(argv_frame);
-    region_map(pmm_allocator, argv_region, page_table_address, (u64)argv_frame, FRAME_PRESENT | FRAME_USER);
+    Frame argv_frame = pmm_alloc_frame(pmm_allocator, argv_size_pages);
+    ASSERT(argv_frame.ptr);
+    region_map(pmm_allocator, argv_region, page_table_address, argv_frame, FRAME_PRESENT | FRAME_USER);
 
     // Making sure that the region is not already mapped in the current page table, as that would wreak havok.
     // We need to be clever here and make sure we chose another region, setting asserts here means we postpone that until the future.
@@ -103,8 +103,8 @@ Task task_init(PmmAllocator* pmm_allocator, u64 current_page_table_address, Elf6
 
     // we need to fill in data for argv, we will temporary map the argv space using the current page table adress, fill it and unmap again.
     // In addition to that, we also need to temporariliy map the stack using the current page table address, push the argc and argv pointers and unmap.
-    region_map(pmm_allocator, argv_region, current_page_table_address, (u64)argv_frame, FRAME_PRESENT | FRAME_WRITABLE);
-    region_map(pmm_allocator, stack_region, current_page_table_address, (u64)stack_frame, FRAME_PRESENT | FRAME_WRITABLE | FRAME_USER); // for pushing the argv pointers to stack.
+    region_map(pmm_allocator, argv_region, current_page_table_address, argv_frame, FRAME_PRESENT | FRAME_WRITABLE);
+    region_map(pmm_allocator, stack_region, current_page_table_address, stack_frame, FRAME_PRESENT | FRAME_WRITABLE | FRAME_USER); // for pushing the argv pointers to stack.
 
     u64* stack_pos = (u64*)(STACK_BEGIN_ADDRESS + STACK_SIZE);
     char* current_address = (char*)argv_region.start;
