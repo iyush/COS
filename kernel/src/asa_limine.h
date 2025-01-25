@@ -36,17 +36,27 @@ __attribute__((used, section(".requests_start_marker"))) static volatile LIMINE_
 __attribute__((used, section(".requests_end_marker"))) static volatile LIMINE_REQUESTS_END_MARKER;
 
 
-u64 to_lower_half(u64 address);
-u64 to_higher_half(u64 address);
+// Frame describes a physical address.
+typedef struct Frame {
+    u64 ptr;
+} Frame;
+
+Frame frame_create(u64 ptr) {
+    return (Frame){
+        .ptr = ptr
+    };
+}
+
 
 u64 to_lower_half(u64 address) {
 	ASSERT(hhdm_request.response);
 	return address - hhdm_request.response->offset;
 }
 
-u64 to_higher_half(u64 address) {
+// only frames are supposed to be in lower half, so we enforce that here.
+u64 to_higher_half(Frame frame_ptr) {
 	ASSERT(hhdm_request.response);
-	return address + hhdm_request.response->offset;
+	return frame_ptr.ptr + hhdm_request.response->offset;
 }
 
 #endif

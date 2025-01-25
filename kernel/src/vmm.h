@@ -54,7 +54,6 @@ void region_map(PmmAllocator* pmm_allocator, Region vm_region, u64 p4_address, F
 
 Frame page_table_alloc_frame(PmmAllocator * allocator);
 
-u64 vmm_cr3();
 Frame vmm_physical_frame(u64 p4_address, u64 virtual_address);
 
 // void * vmalloc(u64 size);

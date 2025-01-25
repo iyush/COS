@@ -30,16 +30,6 @@ typedef struct PmmAllocator {
     u64 bmp_size;
 } PmmAllocator;
 
-// Frame describes a physical address.
-typedef struct Frame {
-    u64 ptr;
-} Frame;
-
-Frame frame_create(u64 ptr) {
-    return (Frame){
-        .ptr = ptr
-    };
-}
 
 
 // GCC and Clang reserve the right to generate calls to the following

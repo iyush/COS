@@ -6,7 +6,7 @@
 #define STACK_SIZE 0x100000 // 1Mib;
 
 Task task_init(PmmAllocator* pmm_allocator, u64 current_page_table_address, Elf64 program_elf, s64 argc, char** argv) {
-    u64 page_table_address = to_higher_half(page_table_alloc_frame(pmm_allocator).ptr);
+    u64 page_table_address = to_higher_half(page_table_alloc_frame(pmm_allocator));
     RegionList region_list = regionlist_create(pmm_allocator, MAX_REGION_LIST_TASK);
 
     { // parsing kernel elf
