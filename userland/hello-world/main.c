@@ -41,9 +41,9 @@ void printf(char * f_str, ...) {
 }
 
 int pow(int base, int exp) {
-	int result = 0;
+	int result = 1;
 	for (int i = 0; i < exp; i++) {
-		result *= result;
+		result *= base;
 	}
 	return result;
 }
@@ -66,10 +66,13 @@ typedef uint64_t u64;
 
 int str_to_int(char * str, u64 len, u64 base) {
 	int result = 0;
+
+	// printf("str_to_int: '%s' len:%d base:%d\n", str, len, base);
 	for (u64 i = 0; i < len; i++) {
 		if (str[i] >= 48 && str[i] <= 57) {
 			int indiv_int = str[i] - 48;
-			result += indiv_int * pow(base, len - i - 1);
+			int factor = pow(base, len - i - 1);
+			result += indiv_int * factor;
 		} else {
 			break;
 		}
@@ -82,7 +85,8 @@ int main (int argc, char** argv) {
 		printf("./hello-world <str> <ncount>\n");
 		exit(1);
 	}
-	char * str = argv[1];
+	// printf("%s %s %s\n", argv[0], argv[1], argv[2]);
+	char * str = argv[0];
 	int ncount = str_to_int(argv[2], strlen(argv[2]), 10);
 
 	int i = 0;

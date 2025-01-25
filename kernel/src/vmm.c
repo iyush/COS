@@ -8,12 +8,6 @@
 #define MAX_PAGE_TABLE_COUNT 1024
 #define MAX_REGIONS   1024
 
-
-static u64 page_table_frames;
-static u64 page_table_bmp_ptr; // Simple bump allocator
-
-static int64_t hhdm_offset = 0;
-
 u64 align_up(u64 addr) {
     return (addr + 0xfff) & ~0xfff;
 }
@@ -66,27 +60,14 @@ u64 vmm_cr3()
     return cr3;
 }
 
-static void page_table_init(PmmAllocator * allocator)
+u64 page_table_alloc_frame(PmmAllocator* allocator)
 {
-    page_table_frames = (u64)pmm_alloc_frame(allocator, MAX_PAGE_TABLE_COUNT);
-    if (page_table_frames == 0) {
-        TODO("init page tables failed!");
-    }
+    return (u64)pmm_alloc_frame(allocator, 1);
 }
 
-// returns the physical address.
-static u64 page_table_alloc_frame()
+static void page_table_dealloc_frame(PmmAllocator* allocator, PageTableEntry* page_table)
 {
-    if (page_table_bmp_ptr >= MAX_PAGE_TABLE_COUNT) {
-        TODO("we are out of page tables! allocate some more");
-    }
-    u64 page_table_frame = page_table_frames + (page_table_bmp_ptr * 4096);
-    page_table_bmp_ptr++;
-    return page_table_frame;
-}
-
-u64 page_table_create() {
-    return to_higher_half(page_table_alloc_frame());
+    pmm_dealloc_frame(allocator, (void*)to_lower_half((u64)page_table), 1);
 }
 
 /*
@@ -183,13 +164,13 @@ void page_table_active_walk_and_print(u64 vm_addr, u64 p4_table_address) {
     u64 * p4_table  =  (u64*)(p4_table_address);
 
     u64 p3_table_frame = (p4_table[p4_offset] & ~(1UL << 63)) >> 12;
-    u64* p3_table = (void*)((p3_table_frame << 12) + hhdm_offset);
+    u64* p3_table = (void*)to_higher_half(p3_table_frame << 12);
 
     u64 p2_table_frame = (p3_table[p3_offset] & ~(1UL << 63)) >> 12;
-    u64* p2_table = (void*)((p2_table_frame << 12) + hhdm_offset);
+    u64* p2_table = (void*)to_higher_half(p2_table_frame << 12);
 
     u64 p1_table_frame = (p2_table[p2_offset] & ~(1UL << 63)) >> 12;
-    u64* p1_table = (void*)((p1_table_frame << 12) + hhdm_offset);
+    u64* p1_table = (void*)to_higher_half(p1_table_frame << 12);
 
     ksp("----- walking the page table -----\n");
     ksp("virtual_address: 0x%lx\n", vm_addr);
@@ -206,23 +187,22 @@ u64 vmm_physical_frame(u64 p4_table_address, u64 vm_addr) {
     u64 p2_offset = (u64)(((u64)vm_addr >> 21) & 0x01ff);
     u64 p1_offset = (u64)(((u64)vm_addr >> 12) & 0x01ff);
 
-    u64 * p4_table  =  (u64*)(p4_table_address);
+    PageTableEntry * p4_table  =  (PageTableEntry*)(p4_table_address);
 
-    u64 p3_table_frame = p4_table[p4_offset] >> 12;
-    u64* p3_table = (void*)((p3_table_frame << 12) + hhdm_offset);
+    u64 p3_table_frame = p4_table[p4_offset].page_frame;
+    PageTableEntry* p3_table = (void*)to_higher_half(p3_table_frame << 12);
 
-    u64 p2_table_frame = p3_table[p3_offset] >> 12;
-    u64* p2_table = (void*)((p2_table_frame << 12) + hhdm_offset);
+    u64 p2_table_frame = p3_table[p3_offset].page_frame;
+    PageTableEntry* p2_table = (void*)to_higher_half(p2_table_frame << 12);
 
-    u64 p1_table_frame = p2_table[p2_offset] >> 12;
-    u64* p1_table = (void*)((p1_table_frame << 12) + hhdm_offset);
+    u64 p1_table_frame = p2_table[p2_offset].page_frame;
+    PageTableEntry* p1_table = (void*)to_higher_half(p1_table_frame << 12);
 
-    u64 physical_frame = p1_table[p1_offset] & 0x000ffffffffff000;
+    u64 physical_frame = p1_table[p1_offset].page_frame << 12;
     return physical_frame;
 }
 
-
-void region_map(Region vm_region, u64 p4_address, u64 page_frame, u64 flags)
+void region_map(PmmAllocator* pmm_allocator, Region vm_region, u64 p4_address, u64 page_frame, u64 flags)
 {
     ASSERT(page_frame % 0x1000 == 0);
 
@@ -242,53 +222,136 @@ void region_map(Region vm_region, u64 p4_address, u64 page_frame, u64 flags)
         u64 p2_offset = (u64)(((u64)vm_addr >> 21) & 0x01ff);
         u64 p1_offset = (u64)(((u64)vm_addr >> 12) & 0x01ff);
 
-        u64 * p4_table  =  (u64*)(p4_address);
-        u64 * p3_table;
-        u64 * p2_table;
-        u64 * p1_table;
+        PageTableEntry * p4_table  =  (PageTableEntry*)(p4_address);
+        PageTableEntry * p3_table;
+        PageTableEntry * p2_table;
+        PageTableEntry * p1_table;
 
-        if (!(p4_table[p4_offset] & FRAME_PRESENT))
+        if (!p4_table[p4_offset].is_present)
         {
-            u64 p3_table_frame = page_table_alloc_frame();
-            p4_table[p4_offset] = (u64)(p3_table_frame) | page_flags;
-            p3_table = (void*)(p3_table_frame + hhdm_offset);
+            u64 p3_table_frame = page_table_alloc_frame(pmm_allocator);
+            p4_table[p4_offset].raw = (u64)(p3_table_frame) | page_flags;
+            p3_table = (PageTableEntry*)to_higher_half(p3_table_frame);
         } else {
-            u64 p3_table_frame = (p4_table[p4_offset] & ~(1UL << 63)) >> 12;
-            p4_table[p4_offset] |= page_flags;
-            p3_table = (void*)((p3_table_frame << 12) + hhdm_offset);
+            u64 p3_table_frame = (p4_table[p4_offset].page_frame);
+            p4_table[p4_offset].raw |= page_flags;
+            p3_table = (PageTableEntry*)to_higher_half(p3_table_frame << 12);
         }
 
-        if (!(p3_table[p3_offset] & FRAME_PRESENT))
+        if (!p3_table[p3_offset].is_present)
         {
-            u64 p2_table_frame = page_table_alloc_frame();
-            p3_table[p3_offset] = (u64)(p2_table_frame) | page_flags;
-            p2_table = (void*)(p2_table_frame + hhdm_offset);
+            u64 p2_table_frame = page_table_alloc_frame(pmm_allocator);
+            p3_table[p3_offset].raw = (u64)(p2_table_frame) | page_flags;
+            p2_table = (PageTableEntry*)to_higher_half(p2_table_frame);
         } else {
-            u64 p2_table_frame = (p3_table[p3_offset]  & ~(1UL << 63)) >> 12;
-            p3_table[p3_offset] |= page_flags;
-            p2_table = (void*)((p2_table_frame << 12) + hhdm_offset);
+            u64 p2_table_frame = (p3_table[p3_offset].page_frame);
+            p3_table[p3_offset].raw |= page_flags;
+            p2_table = (PageTableEntry*)to_higher_half(p2_table_frame << 12);
         }
 
-        if (!(p2_table[p2_offset] & FRAME_PRESENT))
+        if (!p2_table[p2_offset].is_present)
         {
-            u64 p1_table_frame = page_table_alloc_frame();
-            p2_table[p2_offset] = (u64)(p1_table_frame) | page_flags;
-            p1_table = (void*)(p1_table_frame + hhdm_offset);
+            u64 p1_table_frame = page_table_alloc_frame(pmm_allocator);
+            p2_table[p2_offset].raw = (u64)(p1_table_frame) | page_flags;
+            p1_table = (PageTableEntry*)to_higher_half(p1_table_frame);
         } else {
-            u64 p1_table_frame = (p2_table[p2_offset] & ~(1UL << 63)) >> 12;
-            p2_table[p2_offset] |= page_flags;
-            p1_table = (void*)((p1_table_frame << 12) + hhdm_offset);
+            u64 p1_table_frame = (p2_table[p2_offset].page_frame);
+            p2_table[p2_offset].raw |= page_flags;
+            p1_table = (PageTableEntry*)to_higher_half(p1_table_frame << 12);
         }
 
-        if (!(p1_table[p1_offset] & FRAME_PRESENT))
+        if (!p1_table[p1_offset].is_present)
         {
-            p1_table[p1_offset] = (u64)(page_frame) | page_flags;
+            p1_table[p1_offset].raw = (u64)(page_frame) | page_flags;
         } else {
-            p1_table[p1_offset] |= page_flags;
+            p1_table[p1_offset].raw |= page_flags;
         }
 
         vm_addr = vm_addr + FRAME_SIZE; // move to next page.
         page_frame += FRAME_SIZE;
+    }
+}
+
+
+bool page_table_is_empty(PageTableEntry* page_table) {
+    bool is_empty = true;
+    for (int i = 0; i < 512; i++) {
+        if (page_table[i].is_present) {
+            is_empty = false;
+        }
+    }
+    return is_empty;
+}
+
+
+bool page_table_is_mapped_for_region(Region vm_region, PageTableEntry* p4_table) {
+    u64 vm_addr = vm_region.start;
+    while (vm_addr < vm_region.start + vm_region.size)
+    {
+        u64 p4_offset = (u64)(((u64)vm_addr >> 39) & 0x01ff);
+        u64 p3_offset = (u64)(((u64)vm_addr >> 30) & 0x01ff);
+        u64 p2_offset = (u64)(((u64)vm_addr >> 21) & 0x01ff);
+        u64 p1_offset = (u64)(((u64)vm_addr >> 12) & 0x01ff);
+
+        if (p4_table[p4_offset].is_present) {
+            PageTableEntry * p3_table = (PageTableEntry*) to_higher_half(p4_table[p4_offset].page_frame << 12);
+            if (p3_table[p3_offset].is_present) {
+                PageTableEntry * p2_table = (PageTableEntry*) to_higher_half(p3_table[p3_offset].page_frame << 12);
+                if (p2_table[p2_offset].is_present) {
+                    PageTableEntry * p1_table = (PageTableEntry*) to_higher_half(p2_table[p2_offset].page_frame << 12);
+                    if (p1_table[p1_offset].is_present) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        vm_addr = vm_addr + FRAME_SIZE; // move to next page.
+    }
+    return false;
+}
+
+void region_unmap(PmmAllocator* pmm_allocator, Region vm_region, u64 p4_address) {
+    // CHECK: maybe we need to do invlg???
+
+    u64 vm_addr = vm_region.start;
+
+    while (vm_addr < vm_region.start + vm_region.size)
+    {
+        u64 p4_offset = (u64)(((u64)vm_addr >> 39) & 0x01ff);
+        u64 p3_offset = (u64)(((u64)vm_addr >> 30) & 0x01ff);
+        u64 p2_offset = (u64)(((u64)vm_addr >> 21) & 0x01ff);
+        u64 p1_offset = (u64)(((u64)vm_addr >> 12) & 0x01ff);
+
+        PageTableEntry * p4_table  =  (PageTableEntry*)(p4_address);
+        PageTableEntry * p3_table;
+        PageTableEntry * p2_table;
+        PageTableEntry * p1_table;
+
+        p3_table = (PageTableEntry*)to_higher_half(p4_table[p4_offset].page_frame << 12);
+        p2_table = (PageTableEntry*)to_higher_half(p3_table[p3_offset].page_frame << 12);
+        p1_table = (PageTableEntry*)to_higher_half(p2_table[p2_offset].page_frame << 12);
+
+        if (p1_table[p1_offset].is_present) {
+            p1_table[p1_offset].raw = 0;
+
+            if (page_table_is_empty(p1_table)) {
+                p2_table[p2_offset].raw = 0;
+                page_table_dealloc_frame(pmm_allocator, p1_table);
+            }
+
+            if (page_table_is_empty(p2_table)) {
+                p3_table[p3_offset].raw = 0;
+                page_table_dealloc_frame(pmm_allocator, p2_table);
+            }
+
+            if (page_table_is_empty(p3_table)) {
+                p4_table[p4_offset].raw = 0;
+                page_table_dealloc_frame(pmm_allocator, p3_table);
+            }
+        }
+
+        vm_addr = vm_addr + FRAME_SIZE; // move to next page.
     }
 }
 
@@ -328,10 +391,3 @@ void * vmalloc_(RegionList* regions,  u64 size)
 //     regions[n_regions] = start_region;
 // }
 
-
-void vmm_init(PmmAllocator * allocator, struct limine_hhdm_request hhdm_request)
-{
-    hhdm_offset = hhdm_request.response->offset;
-    page_table_init(allocator);
-    // region_init();
-}

@@ -99,8 +99,6 @@ void _start(void)
     }
 
     PmmAllocator pmm_allocator = pmm_init(memmap_request, hhdm_request, kernel_address_request);
-    vmm_init(&pmm_allocator, hhdm_request);
-
     ASSERT_EQ((u32)module_request.response->module_count, 1); // make sure that we have atleast one file.
                                                               //
     // for syscalls:
@@ -118,9 +116,10 @@ void _start(void)
 
     Elf64 program_elf = elf_parse(module_request.response->modules[0]->address, module_request.response->modules[0]->size);
 
-    u64 argc = 0;
-    char* argv[] = {"hello-world", "hello darkness", "2"};
+    s64 argc = 3;
+    char* argv[] = {"hello-world", "hello darkness", "15"};
     Task task1 = task_init(&pmm_allocator, current_page_table_address, program_elf, argc, argv);
+    ksp("We are now entering the executable\n");
     task_set_page_table_and_jump(task1);
 
     while(1) {}

@@ -24,19 +24,23 @@ enum frame_flags : u64 {
 };
 
 
-typedef struct PageTableEntry  { 
-   u64 present: 1;
-   u64 is_writable: 1;
-   u64 is_user: 1;
-   u64 write_through: 1;
-   u64 cache_disable: 1;
-   u64 is_accessed: 1;
-   u64 ignore_1__: 1;
-   u64 reserved_must_be_zero___: 1;
-   u64 ignore_2__: 2;
-   u64 ignored_for_ordinary_paging_but_not_for_hlat_paging___: 1;
-   u64 page_frame: 53;
-} __attribute__((packed)) PageTableEntry;
+typedef union PageTableEntry {
+   struct __attribute__((packed)) { 
+      u64 is_present: 1;
+      u64 is_writable: 1;
+      u64 is_user: 1;
+      u64 write_through: 1;
+      u64 cache_disable: 1;
+      u64 is_accessed: 1;
+      u64 ignore_1__: 1;
+      u64 reserved_must_be_zero___: 1;
+      u64 ignore_2__: 3;
+      u64 ignored_for_ordinary_paging_but_not_for_hlat_paging___: 1;
+      u64 page_frame: 51;
+      u64 disable_execute: 1;
+   };
+   u64 raw;
+} PageTableEntry;
 
 void page_table_active_walk_and_print(u64 vm_addr, u64 p4_table_address);
 
@@ -46,7 +50,9 @@ Region region_create(u64 start, u64 size);
 
 Region* reserve_virt(RegionList * regions, u64 address, u64 size);
 
-void region_map(Region vm_region, u64 p4_address, u64 page_frame, u64 flags);
+void region_map(PmmAllocator* pmm_allocator, Region vm_region, u64 p4_address, u64 page_frame, u64 flags);
+
+u64 page_table_alloc_frame(PmmAllocator * allocator);
 
 u64 vmm_cr3();
 u64 vmm_physical_frame(u64 p4_address, u64 virtual_address);
