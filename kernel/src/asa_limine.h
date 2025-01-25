@@ -48,9 +48,9 @@ Frame frame_create(u64 ptr) {
 }
 
 
-u64 to_lower_half(u64 address) {
+Frame to_lower_half(u64 address) {
 	ASSERT(hhdm_request.response);
-	return address - hhdm_request.response->offset;
+	return frame_create(address - hhdm_request.response->offset);
 }
 
 // only frames are supposed to be in lower half, so we enforce that here.

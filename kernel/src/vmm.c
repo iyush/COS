@@ -67,7 +67,7 @@ Frame page_table_alloc_frame(PmmAllocator* allocator)
 
 static void page_table_dealloc_frame(PmmAllocator* allocator, PageTableEntry* page_table)
 {
-    pmm_dealloc_frame(allocator, frame_create(to_lower_half((u64)page_table)), 1);
+    pmm_dealloc_frame(allocator, to_lower_half((u64)page_table), 1);
 }
 
 /*

@@ -62,7 +62,7 @@ Task task_init(PmmAllocator* pmm_allocator, u64 current_page_table_address, Elf6
             if (pheader.p_flags & PF_W) flags |= FRAME_WRITABLE; // region.is_writable = true;
 
             regionlist_append(&region_list, region);
-            region_map(pmm_allocator, region, page_table_address, frame_create(to_lower_half(pheader.p_offset + (u64)program_elf.elf_module_start)), flags);
+            region_map(pmm_allocator, region, page_table_address, to_lower_half(pheader.p_offset + (u64)program_elf.elf_module_start), flags);
 
             if (pheader.p_vaddr + pheader.p_memsz > max_v_address) max_v_address = pheader.p_vaddr + pheader.p_memsz;
         }
@@ -135,7 +135,7 @@ Task task_init(PmmAllocator* pmm_allocator, u64 current_page_table_address, Elf6
 }
 
 void task_set_page_table_and_jump(Task task) {
-    u64 page_table_frame = to_lower_half(task.page_table_address);
+    u64 page_table_frame = to_lower_half(task.page_table_address).ptr;
     __asm__ volatile(
         "\n mov %0, %%cr3"                  // load the page table
         "\n mov %1, %%rsp"                  // change the stack pointer
