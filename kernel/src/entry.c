@@ -10,7 +10,6 @@
 #include "asa_limine.h"
 #include "gdt.h"
 #include "cpu.h"
-#include "task.h"
 
 
 #include "./idt.c"
@@ -23,6 +22,7 @@
 #include "elf.c"
 #include "gdt.c"
 #include "task.c"
+#include "scheduler.c"
 
 
 
@@ -33,20 +33,6 @@ extern u8 _KERNEL_TXT_END;
 static u8 kernel_stack[KERNEL_STACK_SIZE] __attribute__((aligned(8)));
 static u64 kernel_stack_ptr = (u64) &kernel_stack + KERNEL_STACK_SIZE;
 
-
-// Halt and catch fire function.
-static void hcf(void)
-{
-    asm("cli");
-    for (;;)
-    {
-        asm("hlt");
-    }
-}
-
-
-
-
 // The following will be our kernel's entry point.
 // If renaming _start() to something else, make sure to change the
 // linker script accordingly.
@@ -54,36 +40,8 @@ void _start(void)
 {
     __asm__ volatile ("mov %0, %%rsp" : : "a" (kernel_stack_ptr));
     // Ensure the bootloader actually understands our base revision (see spec).
-    if (LIMINE_BASE_REVISION_SUPPORTED == false)
-    {
-        hcf();
-    }
+    context_init();
 
-    if (framebuffer_request.response == NULL || framebuffer_request.response->framebuffer_count < 1)
-    {
-        ksp("framebuffer request failed!\n");
-        hcf();
-    }
-    if (memmap_request.response == NULL)
-    {
-        ksp("memmap request failed!\n");
-        hcf();
-    }
-    if (kernel_address_request.response == NULL)
-    {
-        ksp("kernel address request failed!\n");
-        hcf();
-    }
-    if (kfile_request.response == NULL)
-    {
-        ksp("kernel file request failed!\n");
-        hcf();
-    }
-    if (module_request.response == NULL)
-    {
-        ksp("module request failed!\n");
-        hcf();
-    }
     gdt_init(kernel_stack_ptr);
     init_idt();
 
@@ -115,11 +73,23 @@ void _start(void)
 
     Elf64 program_elf = elf_parse(module_request.response->modules[0]->address, module_request.response->modules[0]->size);
 
-    s64 argc = 3;
-    char* argv[] = {"hello-world", "hello darkness", "15"};
-    Task task1 = task_init(&pmm_allocator, current_page_table_address, program_elf, argc, argv);
-    ksp("We are now entering the executable\n");
-    task_set_page_table_and_jump(task1);
+    scheduler_init();
+
+    { 
+        s64 argc = 3;
+        char* argv[] = {"hello-world", "hello darkness", "15"};
+        Task task = task_init(&pmm_allocator, current_page_table_address, program_elf, argc, argv);
+        scheduler_queue_task(task);
+    }
+
+    {
+        s64 argc = 3;
+        char* argv[] = {"hello-world", "hello light", "15"};
+        Task task = task_init(&pmm_allocator, current_page_table_address, program_elf, argc, argv);
+        scheduler_queue_task(task);
+    }
+
+    scheduler_idle_loop();
 
     while(1) {}
 

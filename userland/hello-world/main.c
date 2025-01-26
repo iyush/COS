@@ -86,7 +86,7 @@ int main (int argc, char** argv) {
 		exit(1);
 	}
 	// printf("%s %s %s\n", argv[0], argv[1], argv[2]);
-	char * str = argv[0];
+	char * str = argv[1];
 	int ncount = str_to_int(argv[2], strlen(argv[2]), 10);
 
 	int i = 0;

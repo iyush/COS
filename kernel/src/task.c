@@ -1,4 +1,22 @@
-#include "task.h"
+
+typedef enum TaskState{
+    TASK_QUEUED = 0,
+    TASK_RUNNING = 1,
+    TASK_FINISHED = 2,
+} TaskState;
+
+
+typedef struct Task {
+    u64 id;
+    u64 page_table_address;
+    u64 stack_address;
+    u64 entry_address;
+    TaskState state;
+} Task;
+
+extern u64 _KERNEL_END;
+extern u64 _KERNEL_START;
+
 
 #define MAX_REGION_LIST_TASK 1024
 
@@ -68,14 +86,7 @@ Task task_init(PmmAllocator* pmm_allocator, u64 current_page_table_address, Elf6
         }
     }
 
-    // IMPORTANT: map the kernel on higher half.
-    // u64 kernel_text_size = align_up((u64)&_KERNEL_END - (u64)&_KERNEL_START);
-    // Region kernel_region = region_create(kernel_address_request.response->virtual_base, kernel_text_size);
-    // regionlist_append(&region_list, kernel_region);
-    // region_map(kernel_region, page_table_address, kernel_address_request.response->physical_base, FRAME_PRESENT | FRAME_USER);
-
-
-    // IMPORTANT: create a stack for the executable
+    // create a stack for the executable
     Frame stack_frame = pmm_alloc_frame(pmm_allocator, STACK_SIZE >> 12);
     ASSERT(stack_frame.ptr);
 
@@ -83,7 +94,7 @@ Task task_init(PmmAllocator* pmm_allocator, u64 current_page_table_address, Elf6
     regionlist_append(&region_list, stack_region);
     region_map(pmm_allocator, stack_region, page_table_address, stack_frame, FRAME_PRESENT | FRAME_WRITABLE | FRAME_USER);
 
-    // NOTE: setup the space for argv..............
+    // setting up the space for argv..............
     u64 argv_size = 0;
     for (s64 i = 0; i < argc; i++) {
         argv_size += strlen(argv[i]);
@@ -94,6 +105,7 @@ Task task_init(PmmAllocator* pmm_allocator, u64 current_page_table_address, Elf6
     regionlist_append(&region_list, argv_region);
     Frame argv_frame = pmm_alloc_frame(pmm_allocator, argv_size_pages);
     ASSERT(argv_frame.ptr);
+
     region_map(pmm_allocator, argv_region, page_table_address, argv_frame, FRAME_PRESENT | FRAME_USER);
 
     // Making sure that the region is not already mapped in the current page table, as that would wreak havok.
@@ -104,10 +116,11 @@ Task task_init(PmmAllocator* pmm_allocator, u64 current_page_table_address, Elf6
     // we need to fill in data for argv, we will temporary map the argv space using the current page table adress, fill it and unmap again.
     // In addition to that, we also need to temporariliy map the stack using the current page table address, push the argc and argv pointers and unmap.
     region_map(pmm_allocator, argv_region, current_page_table_address, argv_frame, FRAME_PRESENT | FRAME_WRITABLE);
-    region_map(pmm_allocator, stack_region, current_page_table_address, stack_frame, FRAME_PRESENT | FRAME_WRITABLE | FRAME_USER); // for pushing the argv pointers to stack.
+    region_map(pmm_allocator, stack_region, current_page_table_address, stack_frame, FRAME_PRESENT | FRAME_WRITABLE); // for pushing the argv pointers to stack.
 
-    u64* stack_pos = (u64*)(STACK_BEGIN_ADDRESS + STACK_SIZE);
+    u64* stack_pos = (u64*)(stack_region.start + stack_region.size);
     char* current_address = (char*)argv_region.start;
+    bochs_breakpoint();
     for (s64 i = argc - 1; i >= 0; i--) {
         u64 str_len = strlen(argv[i]);
         stack_pos--;
@@ -120,10 +133,8 @@ Task task_init(PmmAllocator* pmm_allocator, u64 current_page_table_address, Elf6
     stack_pos--;
     *stack_pos = argc;
 
-    // MASSIVE TODO here -------
-    // please please please implement these functions
-    // region_unmap(pmm_allocator, argv_region, current_page_table_address);
-    // region_unmap(pmm_allocator, stack_region, current_page_table_address);
+    region_unmap(pmm_allocator, argv_region, current_page_table_address);
+    region_unmap(pmm_allocator, stack_region, current_page_table_address);
 
     Task task = {
         .stack_address = (u64)stack_pos,

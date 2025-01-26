@@ -47,16 +47,40 @@ Frame frame_create(u64 ptr) {
     };
 }
 
+typedef struct Context {
+    u64 is_set;
+    u64 hhdm_offset;
+} Context;
+
+static Context ctx;
+
+void context_init() {
+    ASSERT(LIMINE_BASE_REVISION_SUPPORTED)
+    ASSERT(hhdm_request.response);
+    ASSERT(framebuffer_request.response);
+    ASSERT(framebuffer_request.response->framebuffer_count > 0);
+    ASSERT(memmap_request.response);
+    ASSERT(kernel_address_request.response);
+    ASSERT(kfile_request.response);
+    ASSERT(module_request.response);
+
+    ctx = (Context){
+        .is_set = 1,
+        .hhdm_offset = hhdm_request.response->offset
+    };
+    return;
+}
+
 
 Frame to_lower_half(u64 address) {
-	ASSERT(hhdm_request.response);
-	return frame_create(address - hhdm_request.response->offset);
+	ASSERT(ctx.is_set);
+	return frame_create(address - ctx.hhdm_offset);
 }
 
 // only frames are supposed to be in lower half, so we enforce that here.
 u64 to_higher_half(Frame frame_ptr) {
-	ASSERT(hhdm_request.response);
-	return frame_ptr.ptr + hhdm_request.response->offset;
+	ASSERT(ctx.is_set);
+	return frame_ptr.ptr + ctx.hhdm_offset;
 }
 
 #endif

@@ -5,6 +5,7 @@
 #include "./kio.h"
 #include "./pic.c"
 #include "idt.h"
+#include "scheduler.h"
 
 typedef struct {
    u16 offset_1;        // offset bits 0..15
@@ -22,14 +23,6 @@ typedef struct {
 } __attribute__((packed)) idtr_t;
 
 
-void hang() {
-
-   while (1) {
-      __asm__ volatile("hlt");
-      
-   }
-
-}
 void dmpregs(struct regs r) {
    ksp("rax     0x%lx\n", r.rax);
    ksp("rbx     0x%lx\n", r.rbx);
@@ -100,8 +93,7 @@ void all_interrupts_handler(struct regs* r)
                      case 0: 
                         {
                            // cleanup();
-                           ksp("Program has exited!\n");
-                           hang();
+                           scheduler_cleanup_task();
                         }
                         break;
                      case 1:

@@ -29,4 +29,10 @@
         while(1) {} \
     }
 
+#define UNREACHABLE()\
+    { \
+        ksp("[%s:%d] UNREACHABLE\n", __FILE__, __LINE__); \
+        while(1) {} \
+    }
+
 #endif

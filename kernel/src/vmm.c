@@ -230,6 +230,7 @@ void region_map(PmmAllocator* pmm_allocator, Region vm_region, u64 p4_address, F
         if (!p4_table[p4_offset].is_present)
         {
             Frame p3_table_frame = page_table_alloc_frame(pmm_allocator);
+            ASSERT(p3_table_frame.ptr);
             p4_table[p4_offset].raw = (u64)(p3_table_frame.ptr) | page_flags;
             p3_table = (PageTableEntry*)to_higher_half(p3_table_frame);
         } else {
@@ -241,6 +242,7 @@ void region_map(PmmAllocator* pmm_allocator, Region vm_region, u64 p4_address, F
         if (!p3_table[p3_offset].is_present)
         {
             Frame p2_table_frame = page_table_alloc_frame(pmm_allocator);
+            ASSERT(p2_table_frame.ptr);
             p3_table[p3_offset].raw = (u64)(p2_table_frame.ptr) | page_flags;
             p2_table = (PageTableEntry*)to_higher_half(p2_table_frame);
         } else {
@@ -252,6 +254,7 @@ void region_map(PmmAllocator* pmm_allocator, Region vm_region, u64 p4_address, F
         if (!p2_table[p2_offset].is_present)
         {
             Frame p1_table_frame = page_table_alloc_frame(pmm_allocator);
+            ASSERT(p1_table_frame.ptr);
             p2_table[p2_offset].raw = (u64)(p1_table_frame.ptr) | page_flags;
             p1_table = (PageTableEntry*)to_higher_half(p1_table_frame);
         } else {
@@ -336,23 +339,29 @@ void region_unmap(PmmAllocator* pmm_allocator, Region vm_region, u64 p4_address)
             p1_table[p1_offset].raw = 0;
 
             if (page_table_is_empty(p1_table)) {
-                p2_table[p2_offset].raw = 0;
                 page_table_dealloc_frame(pmm_allocator, p1_table);
+                p2_table[p2_offset].raw = 0;
             }
 
             if (page_table_is_empty(p2_table)) {
-                p3_table[p3_offset].raw = 0;
                 page_table_dealloc_frame(pmm_allocator, p2_table);
+                p3_table[p3_offset].raw = 0;
             }
 
             if (page_table_is_empty(p3_table)) {
-                p4_table[p4_offset].raw = 0;
                 page_table_dealloc_frame(pmm_allocator, p3_table);
+                p4_table[p4_offset].raw = 0;
             }
         }
 
         vm_addr = vm_addr + FRAME_SIZE; // move to next page.
     }
+
+    asm __volatile__(
+            "mov %%cr3, %%rax\n"
+            "mov %%rax, %%cr3\n"
+            : : :
+            );
 }
 
 /*
