@@ -75,16 +75,9 @@ void _start(void)
 
     scheduler_init();
 
-    { 
+    for (int i = 0; i < 3; i++) { 
         s64 argc = 3;
         char* argv[] = {"hello-world", "hello darkness", "15"};
-        Task task = task_init(&pmm_allocator, current_page_table_address, program_elf, argc, argv);
-        scheduler_queue_task(task);
-    }
-
-    {
-        s64 argc = 3;
-        char* argv[] = {"hello-world", "hello light", "15"};
         Task task = task_init(&pmm_allocator, current_page_table_address, program_elf, argc, argv);
         scheduler_queue_task(task);
     }

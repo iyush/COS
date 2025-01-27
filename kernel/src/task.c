@@ -18,13 +18,14 @@ extern u64 _KERNEL_END;
 extern u64 _KERNEL_START;
 
 
-#define MAX_REGION_LIST_TASK 1024
+#define MAX_REGION_LIST_TASK 10
 
 #define STACK_BEGIN_ADDRESS 0x7ff000000000UL
 #define STACK_SIZE 0x100000 // 1Mib;
 
 Task task_init(PmmAllocator* pmm_allocator, u64 current_page_table_address, Elf64 program_elf, s64 argc, char** argv) {
     u64 page_table_address = to_higher_half(page_table_alloc_frame(pmm_allocator));
+    memset((u8*)page_table_address, 0, FRAME_SIZE / sizeof(u8) );
     RegionList region_list = regionlist_create(pmm_allocator, MAX_REGION_LIST_TASK);
 
     { // parsing kernel elf
@@ -47,9 +48,7 @@ Task task_init(PmmAllocator* pmm_allocator, u64 current_page_table_address, Elf6
                 // reserve the virtual address;
                 Region region = region_create(pheader.p_vaddr, pheader.p_memsz);
 
-                u64 flags = FRAME_PRESENT;// | FRAME_USER;
-
-                // if (!(pheader.p_flags & PF_X)) flags |= FRAME_NOEXEC;
+                u64 flags = FRAME_PRESENT;
                 if (pheader.p_flags & PF_W) flags |= FRAME_WRITABLE;
 
                 regionlist_append(&region_list, region);
@@ -75,9 +74,7 @@ Task task_init(PmmAllocator* pmm_allocator, u64 current_page_table_address, Elf6
             Region region = region_create(pheader.p_vaddr, pheader.p_memsz);
 
             u64 flags = FRAME_PRESENT | FRAME_USER;
-
-            // if (pheader.p_flags & PF_R) region.is_writable = false;
-            if (pheader.p_flags & PF_W) flags |= FRAME_WRITABLE; // region.is_writable = true;
+            if (pheader.p_flags & PF_W) flags |= FRAME_WRITABLE;
 
             regionlist_append(&region_list, region);
             region_map(pmm_allocator, region, page_table_address, to_lower_half(pheader.p_offset + (u64)program_elf.elf_module_start), flags);
@@ -89,10 +86,10 @@ Task task_init(PmmAllocator* pmm_allocator, u64 current_page_table_address, Elf6
     // create a stack for the executable
     Frame stack_frame = pmm_alloc_frame(pmm_allocator, STACK_SIZE >> 12);
     ASSERT(stack_frame.ptr);
-
     Region stack_region = region_create(STACK_BEGIN_ADDRESS, STACK_SIZE);
     regionlist_append(&region_list, stack_region);
     region_map(pmm_allocator, stack_region, page_table_address, stack_frame, FRAME_PRESENT | FRAME_WRITABLE | FRAME_USER);
+    page_table_active_walk_and_print(stack_region.start, (u64) page_table_address);
 
     // setting up the space for argv..............
     u64 argv_size = 0;
@@ -105,7 +102,6 @@ Task task_init(PmmAllocator* pmm_allocator, u64 current_page_table_address, Elf6
     regionlist_append(&region_list, argv_region);
     Frame argv_frame = pmm_alloc_frame(pmm_allocator, argv_size_pages);
     ASSERT(argv_frame.ptr);
-
     region_map(pmm_allocator, argv_region, page_table_address, argv_frame, FRAME_PRESENT | FRAME_USER);
 
     // Making sure that the region is not already mapped in the current page table, as that would wreak havok.

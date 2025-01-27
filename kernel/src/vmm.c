@@ -65,10 +65,12 @@ Frame page_table_alloc_frame(PmmAllocator* allocator)
     return pmm_alloc_frame(allocator, 1);
 }
 
+/*
 static void page_table_dealloc_frame(PmmAllocator* allocator, PageTableEntry* page_table)
 {
     pmm_dealloc_frame(allocator, to_lower_half((u64)page_table), 1);
 }
+*/
 
 /*
 // find free virtual memory address.
@@ -161,23 +163,22 @@ void page_table_active_walk_and_print(u64 vm_addr, u64 p4_table_address) {
     u64 p2_offset = (u64)(((u64)vm_addr >> 21) & 0x01ff);
     u64 p1_offset = (u64)(((u64)vm_addr >> 12) & 0x01ff);
 
+    ksp("----- walking the page table -----\n");
     u64 * p4_table  =  (u64*)(p4_table_address);
+    ksp("    (0x%lx)p4 table[%ld]: 0x%lx\n", (u64)p4_table, p4_offset, p4_table[p4_offset]);
 
     u64 p3_table_frame = (p4_table[p4_offset] & ~(1UL << 63)) >> 12;
     u64* p3_table = (void*)to_higher_half(frame_create(p3_table_frame << 12));
+    ksp("    (0x%lx)p3 table[%ld]: 0x%lx\n", (u64)p3_table, p3_offset, p3_table[p3_offset]);
 
     u64 p2_table_frame = (p3_table[p3_offset] & ~(1UL << 63)) >> 12;
     u64* p2_table = (void*)to_higher_half(frame_create(p2_table_frame << 12));
+    ksp("    (0x%lx)p2 table[%ld]: 0x%lx\n", (u64)p2_table, p2_offset, p2_table[p2_offset]);
 
     u64 p1_table_frame = (p2_table[p2_offset] & ~(1UL << 63)) >> 12;
     u64* p1_table = (void*)to_higher_half(frame_create(p1_table_frame << 12));
-
-    ksp("----- walking the page table -----\n");
-    ksp("virtual_address: 0x%lx\n", vm_addr);
-    ksp("    (0x%lx)p4 table[%ld]: 0x%lx\n", (u64)p4_table, p4_offset, p4_table[p4_offset]);
-    ksp("    (0x%lx)p3 table[%ld]: 0x%lx\n", (u64)p3_table, p3_offset, p3_table[p3_offset]);
-    ksp("    (0x%lx)p2 table[%ld]: 0x%lx\n", (u64)p2_table, p2_offset, p2_table[p2_offset]);
     ksp("    (0x%lx)p1 table[%ld]: 0x%lx\n", (u64)p1_table, p1_offset, p1_table[p1_offset]);
+    ksp("----------------------------------\n");
 
 }
 
@@ -205,16 +206,11 @@ Frame vmm_physical_frame(u64 p4_table_address, u64 vm_addr) {
 void region_map(PmmAllocator* pmm_allocator, Region vm_region, u64 p4_address, Frame page_frame, u64 flags)
 {
     ASSERT(page_frame.ptr % 0x1000 == 0);
+    ASSERT(vm_region.size % 0x1000 == 0);
+    ASSERT(vm_region.start % 0x1000 == 0);
 
     u64 page_flags = flags;
-
-    // u64 page_flags = FRAME_PRESENT | FRAME_USER;
-    // if (vm_region.is_writable) {
-    //     page_flags |= FRAME_WRITABLE;
-    // }
-
     u64 vm_addr = vm_region.start;
-
     while (vm_addr < vm_region.start + vm_region.size)
     {
         u64 p4_offset = (u64)(((u64)vm_addr >> 39) & 0x01ff);
@@ -233,6 +229,7 @@ void region_map(PmmAllocator* pmm_allocator, Region vm_region, u64 p4_address, F
             ASSERT(p3_table_frame.ptr);
             p4_table[p4_offset].raw = (u64)(p3_table_frame.ptr) | page_flags;
             p3_table = (PageTableEntry*)to_higher_half(p3_table_frame);
+            memset((u8*)p3_table, 0, FRAME_SIZE / sizeof(u8) );
         } else {
             u64 p3_table_frame = (p4_table[p4_offset].page_frame);
             p4_table[p4_offset].raw |= page_flags;
@@ -245,6 +242,7 @@ void region_map(PmmAllocator* pmm_allocator, Region vm_region, u64 p4_address, F
             ASSERT(p2_table_frame.ptr);
             p3_table[p3_offset].raw = (u64)(p2_table_frame.ptr) | page_flags;
             p2_table = (PageTableEntry*)to_higher_half(p2_table_frame);
+            memset((u8*)p2_table, 0, FRAME_SIZE / sizeof(u8) );
         } else {
             u64 p2_table_frame = (p3_table[p3_offset].page_frame);
             p3_table[p3_offset].raw |= page_flags;
@@ -257,6 +255,7 @@ void region_map(PmmAllocator* pmm_allocator, Region vm_region, u64 p4_address, F
             ASSERT(p1_table_frame.ptr);
             p2_table[p2_offset].raw = (u64)(p1_table_frame.ptr) | page_flags;
             p1_table = (PageTableEntry*)to_higher_half(p1_table_frame);
+            memset((u8*)p1_table, 0, FRAME_SIZE / sizeof(u8) );
         } else {
             u64 p1_table_frame = (p2_table[p2_offset].page_frame);
             p2_table[p2_offset].raw |= page_flags;
@@ -315,6 +314,7 @@ bool page_table_is_mapped_for_region(Region vm_region, PageTableEntry* p4_table)
 }
 
 void region_unmap(PmmAllocator* pmm_allocator, Region vm_region, u64 p4_address) {
+    (void)pmm_allocator;
     // CHECK: maybe we need to do invlg???
 
     u64 vm_addr = vm_region.start;
@@ -339,17 +339,17 @@ void region_unmap(PmmAllocator* pmm_allocator, Region vm_region, u64 p4_address)
             p1_table[p1_offset].raw = 0;
 
             if (page_table_is_empty(p1_table)) {
-                page_table_dealloc_frame(pmm_allocator, p1_table);
+                // page_table_dealloc_frame(pmm_allocator, p1_table);
                 p2_table[p2_offset].raw = 0;
             }
 
             if (page_table_is_empty(p2_table)) {
-                page_table_dealloc_frame(pmm_allocator, p2_table);
+                // page_table_dealloc_frame(pmm_allocator, p2_table);
                 p3_table[p3_offset].raw = 0;
             }
 
             if (page_table_is_empty(p3_table)) {
-                page_table_dealloc_frame(pmm_allocator, p3_table);
+                // page_table_dealloc_frame(pmm_allocator, p3_table);
                 p4_table[p4_offset].raw = 0;
             }
         }
