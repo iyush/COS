@@ -23,6 +23,7 @@ u64 _pmm_cr4() {
     return cr4;
 }
 
+u64 pmm_frames_total_allocated = 0;
 
 
 typedef struct PmmAllocator {
@@ -138,6 +139,8 @@ void bmp_set_used(PmmAllocator* allocator, Frame frame_ptr, u64 n_frames)
 
         allocator->bmp[frame_big_index] = allocator->bmp[frame_big_index] | (1 << frame_sma_index);
     }
+
+    pmm_frames_total_allocated += n_frames;
 }
 
 PmmAllocator pmm_init(struct limine_memmap_request memmap_request, struct limine_hhdm_request hhdm_request, struct limine_kernel_address_request kernel_address_request)
@@ -215,7 +218,7 @@ PmmAllocator pmm_init(struct limine_memmap_request memmap_request, struct limine
         }
     }
     // for null frame.
-    allocator.bmp[0] = allocator.bmp[0] & ~(1 << 0);
+    allocator.bmp[0] = allocator.bmp[0] | 1;
 
     return allocator;
 }
@@ -227,36 +230,52 @@ Frame pmm_find_free_frame(PmmAllocator *allocator, u64 n_frames)
         return frame_create(0);
     }
 
-    u64 start_frame = 0;
-    u64 end_frame = 0;
+
+    u64 zero_count = 0;
+    u64 zero_idx = 0;
+    bool result_found = false;
 
     for (u64 i = 0; i < allocator->bmp_size; i++)
     {
-        for (u64 j = 0; j <= 8; j++)
-        {
-            end_frame = i * 8 + j;
-            if (((allocator->bmp[i] >> j) & 1) == 1)
+        u8 super_frame = allocator->bmp[i];
+        if (super_frame != 0xff) {
+            for (u64 j = 0; j < 8; j++)
             {
-                start_frame = end_frame;
-            }
+                if (((super_frame >> j) & 1) == 0)
+                {
+                    zero_count++;
+                } else {
+                    zero_count = 0;
+                }
 
-            if ((end_frame - start_frame) > n_frames)
-            {
-                return frame_create((start_frame + 1) * FRAME_SIZE);
+                if (zero_count >= n_frames) {
+                    zero_idx = (i * 8 + j) - (n_frames - 1);
+                    result_found = true;
+                    goto end;
+                }
             }
+        } else {
+            zero_count = 0;
         }
     }
 
-    return frame_create(0);
+
+end:
+    if (result_found) {
+        return frame_create(zero_idx * FRAME_SIZE);
+    } else {
+        return frame_create(0);
+    }
+
 }
 
 Frame pmm_alloc_frame(PmmAllocator * allocator, u64 n_frames)
 {
-    // ksp("nframes %ld\n", n_frames);
     Frame frame = pmm_find_free_frame(allocator, n_frames);
     if (frame.ptr) {
         bmp_set_used(allocator, frame, n_frames);
     }
+    ksp("frame 0x%lx asked: %ld total_allocated_frames: %ld max_frames: %ld\n", frame.ptr, n_frames, pmm_frames_total_allocated, allocator->bmp_size / 8);
     return frame;
 }
 

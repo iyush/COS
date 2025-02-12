@@ -26,7 +26,7 @@ extern u64 _KERNEL_START;
 Task task_init(PmmAllocator* pmm_allocator, u64 current_page_table_address, Elf64 program_elf, s64 argc, char** argv) {
     u64 page_table_address = to_higher_half(page_table_alloc_frame(pmm_allocator));
     memset((u8*)page_table_address, 0, FRAME_SIZE / sizeof(u8) );
-    RegionList region_list = regionlist_create(pmm_allocator, MAX_REGION_LIST_TASK);
+    // RegionList region_list = regionlist_create(pmm_allocator, MAX_REGION_LIST_TASK);
 
     { // parsing kernel elf
         void* kernel_address = kfile_request.response->kernel_file->address;
@@ -51,7 +51,7 @@ Task task_init(PmmAllocator* pmm_allocator, u64 current_page_table_address, Elf6
                 u64 flags = FRAME_PRESENT;
                 if (pheader.p_flags & PF_W) flags |= FRAME_WRITABLE;
 
-                regionlist_append(&region_list, region);
+                // regionlist_append(&region_list, region);
                 region_map(pmm_allocator, region, page_table_address, physical_frame, flags);
             }
         }
@@ -76,7 +76,7 @@ Task task_init(PmmAllocator* pmm_allocator, u64 current_page_table_address, Elf6
             u64 flags = FRAME_PRESENT | FRAME_USER;
             if (pheader.p_flags & PF_W) flags |= FRAME_WRITABLE;
 
-            regionlist_append(&region_list, region);
+            // regionlist_append(&region_list, region);
             region_map(pmm_allocator, region, page_table_address, to_lower_half(pheader.p_offset + (u64)program_elf.elf_module_start), flags);
 
             if (pheader.p_vaddr + pheader.p_memsz > max_v_address) max_v_address = pheader.p_vaddr + pheader.p_memsz;
@@ -84,10 +84,11 @@ Task task_init(PmmAllocator* pmm_allocator, u64 current_page_table_address, Elf6
     }
 
     // create a stack for the executable
+
     Frame stack_frame = pmm_alloc_frame(pmm_allocator, STACK_SIZE >> 12);
     ASSERT(stack_frame.ptr);
     Region stack_region = region_create(STACK_BEGIN_ADDRESS, STACK_SIZE);
-    regionlist_append(&region_list, stack_region);
+    // regionlist_append(&region_list, stack_region);
     region_map(pmm_allocator, stack_region, page_table_address, stack_frame, FRAME_PRESENT | FRAME_WRITABLE | FRAME_USER);
     page_table_active_walk_and_print(stack_region.start, (u64) page_table_address);
 
@@ -97,9 +98,10 @@ Task task_init(PmmAllocator* pmm_allocator, u64 current_page_table_address, Elf6
         argv_size += strlen(argv[i]);
     }
     argv_size += argc * 3; // this is for argc * 3 '\0' we will put at the end of the string.
-    u64 argv_size_pages = align_up(argv_size);
-    Region argv_region = region_create(max_v_address, argv_size_pages);
-    regionlist_append(&region_list, argv_region);
+    argv_size = align_up(argv_size);
+    u64 argv_size_pages = argv_size / FRAME_SIZE;
+    Region argv_region = region_create(max_v_address, argv_size);
+    // regionlist_append(&region_list, argv_region);
     Frame argv_frame = pmm_alloc_frame(pmm_allocator, argv_size_pages);
     ASSERT(argv_frame.ptr);
     region_map(pmm_allocator, argv_region, page_table_address, argv_frame, FRAME_PRESENT | FRAME_USER);

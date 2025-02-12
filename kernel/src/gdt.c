@@ -100,6 +100,7 @@ void gdt_init(u64 kernel_stack_ptr_address) {
         GDT_PL_0,
         GDT_LIMIT_GRANULARITY_BYTE);
 
+
     // Kernel Data segment
     gdt_set_gate(6, 0, 0,
         GDT_SEGMENT_TYPE_DATA_READ_WRITE_ACCESSED,

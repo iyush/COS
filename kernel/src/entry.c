@@ -44,6 +44,7 @@ void _start(void)
 
     gdt_init(kernel_stack_ptr);
     init_idt();
+    bochs_breakpoint();
 
     // Fetch the first framebuffer.
     struct limine_framebuffer *framebuffer = framebuffer_request.response->framebuffers[0];
@@ -57,7 +58,21 @@ void _start(void)
 
     PmmAllocator pmm_allocator = pmm_init(memmap_request, hhdm_request, kernel_address_request);
     ASSERT_EQ((u32)module_request.response->module_count, 1); // make sure that we have atleast one file.
-                                                              //
+
+    /*
+    static u8 bitmap[] = {0b11111101, 0b01111111, 0b00000001};
+    PmmAllocator allocator = (PmmAllocator){
+        .bmp = bitmap,
+        .bmp_size = 3
+    };
+    
+    for (int i = 0; i < 10; i++) {
+        ksp("%ld\n", pmm_alloc_frame(&allocator, 1).ptr / FRAME_SIZE);
+    }
+    */
+
+
+
     // for syscalls:
     // IF (CS.L ≠ 1 ) or (IA32_EFER.LMA ≠ 1) or (IA32_EFER.SCE ≠ 1)
     // Things we need to add to the MSR:
@@ -75,7 +90,7 @@ void _start(void)
 
     scheduler_init();
 
-    for (int i = 0; i < 3; i++) { 
+    for (int i = 0; i < 200; i++) { 
         s64 argc = 3;
         char* argv[] = {"hello-world", "hello darkness", "15"};
         Task task = task_init(&pmm_allocator, current_page_table_address, program_elf, argc, argv);
@@ -84,6 +99,8 @@ void _start(void)
 
     scheduler_idle_loop();
 
+    /*
+    */
     while(1) {}
 
 }
