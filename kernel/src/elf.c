@@ -3,7 +3,7 @@
 #include "elf.h"
 
 
-void assert(b8 is_true, char * msg) {
+void assert(bool is_true, char * msg) {
     if (!is_true) {
         ksp("ASSERT FAILED! %s\n", msg);
         while (1) {}
@@ -13,14 +13,14 @@ void assert(b8 is_true, char * msg) {
 
 Elf64 elf_parse(u8* buf, u64 len) {
 
-    Elf64 result = {};
+    Elf64 result = {0};
 
     u8* start = buf;
     u8* current = start;
 
     assert(len > sizeof(Elf64_Ehdr), "Not an ELF File (length check)!");
 
-    Elf64_Ehdr header = {};
+    Elf64_Ehdr header = {0};
     memcpy(&header, current, sizeof(Elf64_Ehdr));
     current += sizeof(Elf64_Ehdr);
     // u8* header_end = current;

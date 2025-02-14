@@ -1,3 +1,5 @@
+#include "./defs.c"
+
 #include "stdint.h"
 #include <stddef.h>
 #include <stdbool.h>

@@ -145,7 +145,7 @@ extern __attribute__((interrupt)) void int_wrapper_33(struct interrupt_frame*, u
 extern __attribute__((interrupt)) void int_wrapper_99(struct interrupt_frame*, u64);
 
 
-void idt_set_handler(int interrupt_vector, void* handler_fn, u8 type_attribute) {
+void idt_set_handler(int interrupt_vector, void (*handler_fn)(), u8 type_attribute) {
    idt_entry_64_t * entry = &idt[interrupt_vector];
 
    entry->offset_1        = ((u64)handler_fn & 0xffff);

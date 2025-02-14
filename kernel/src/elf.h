@@ -70,43 +70,36 @@ enum {
 
 
 // p_flags
-enum {
-    PF_X = 0x1, // Execute permission
-    PF_W = 0x2, // Write permission
-    PF_R = 0x4, // Read permission
-    PF_MASKOS = 0x00FF0000, // These flag bits are reserved for environment specific use
-    PF_MASKPROC = 0xFF000000, // These flag bits are reserved for processor specific use
-};
-
+#define PF_X 0x1 // Execute permission
+#define PF_W 0x2 // Write permission
+#define PF_R 0x4 // Read permission
+#define PF_MASKOS 0x00FF0000 // These flag bits are reserved for environment specific use
+#define PF_MASKPROC 0xFF000000 // These flag bits are reserved for processor specific use
 
 // Section Types, sh_type
-enum {
-    SHT_NULL = 0, // Marks an unused section header
-    SHT_PROGBITS = 1, // Contains information defined by the program
-    SHT_SYMTAB = 2, // Contains a linker symbol table
-    SHT_STRTAB = 3, // Contains a string table
-    SHT_RELA = 4, // Contains “Rela” type relocation entries
-    SHT_HASH = 5, // Contains a symbol hash table
-    SHT_DYNAMIC = 6, // Contains dynamic linking tables
-    SHT_NOTE = 7, // Contains note information
-    SHT_NOBITS = 8, // Contains uninitialized space; does not occupy any space in the file
-    SHT_REL = 9, // Contains “Rel” type relocation entries
-    SHT_SHLIB = 10, // Reserved
-    SHT_DYNSYM = 11, // Contains a dynamic loader symbol table
-    SHT_LOOS = 0x60000000, // Environment-specific use
-    SHT_HIOS = 0x6FFFFFFF, //
-    SHT_LOPROC = 0x70000000, // Processor-specific use
-    SHT_HIPROC = 0x7FFFFFFF, //
-};
+#define SHT_NULL 0 // Marks an unused section header
+#define SHT_PROGBITS 1 // Contains information defined by the program
+#define SHT_SYMTAB 2 // Contains a linker symbol table
+#define SHT_STRTAB 3 // Contains a string table
+#define SHT_RELA 4 // Contains “Rela” type relocation entries
+#define SHT_HASH 5 // Contains a symbol hash table
+#define SHT_DYNAMIC 6 // Contains dynamic linking tables
+#define SHT_NOTE 7 // Contains note information
+#define SHT_NOBITS 8 // Contains uninitialized space; does not occupy any space in the file
+#define SHT_REL 9 // Contains “Rel” type relocation entries
+#define SHT_SHLIB 10 // Reserved
+#define SHT_DYNSYM 11 // Contains a dynamic loader symbol table
+#define SHT_LOOS 0x60000000 // Environment-specific use
+#define SHT_HIOS 0x6FFFFFFF //
+#define SHT_LOPROC 0x70000000 // Processor-specific use
+#define SHT_HIPROC 0x7FFFFFFF //
 
 // Table 9. Section Attributes, sh_flags
-enum {
-    SHF_WRITE = 0x1, // Section contains writable data
-    SHF_ALLOC = 0x2, // Section is allocated in memory image of program
-    SHF_EXECINSTR = 0x4, // Section contains executable instructions
-    SHF_MASKOS = 0x0F000000, // Environment-specific use
-    SHF_MASKPROC = 0xF0000000, // Processor-specific use
-};
+#define SHF_WRITE 0x1 // Section contains writable data
+#define SHF_ALLOC 0x2 // Section is allocated in memory image of program
+#define SHF_EXECINSTR 0x4 // Section contains executable instructions
+#define SHF_MASKOS 0x0F000000 // Environment-specific use
+#define SHF_MASKPROC 0xF0000000 // Processor-specific use
 
 
 typedef struct

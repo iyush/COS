@@ -7,8 +7,8 @@ typedef struct TaskList {
 
 
 
-static u64 running_task_id = {};
-static TaskList tasks = {};
+static u64 running_task_id = {0};
+static TaskList tasks = {0};
 
 static u64 task_id_counter = 0; // only increments!
 
