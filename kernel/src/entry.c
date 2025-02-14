@@ -58,16 +58,24 @@ void _start(void)
 
     PmmAllocator pmm_allocator = pmm_init(memmap_request, hhdm_request, kernel_address_request);
     ASSERT_EQ((u32)module_request.response->module_count, 1); // make sure that we have atleast one file.
+    (void)pmm_allocator;
+
 
     /*
-    static u8 bitmap[] = {0b11111101, 0b01111111, 0b00000001};
-    PmmAllocator allocator = (PmmAllocator){
-        .bmp = bitmap,
-        .bmp_size = 3
-    };
-    
-    for (int i = 0; i < 10; i++) {
-        ksp("%ld\n", pmm_alloc_frame(&allocator, 1).ptr / FRAME_SIZE);
+    for (;;) {
+        Frame frame = pmm_alloc_frame(&pmm_allocator, 1);
+        // ksp("0x%lb ", allocator.bmp[0]);
+        // ksp("0x%lb ", allocator.bmp[1]);
+        // ksp("0x%lb [%d]\n", allocator.bmp[2], i);
+        ASSERT(frame.ptr);
+    }
+
+    for (int i = 0; i < 192; i++) {
+        Frame frame = frame_create(i << 12);
+        pmm_dealloc_frame(&allocator, frame, 1);
+        // ksp("0x%lb ", allocator.bmp[0]);
+        // ksp("0x%lb ", allocator.bmp[1]);
+        // ksp("0x%lb [%d]\n", allocator.bmp[2], i);
     }
     */
 
@@ -90,17 +98,16 @@ void _start(void)
 
     scheduler_init();
 
-    for (int i = 0; i < 200; i++) { 
+    // TODO: 450+ causes general protection fault here somehow.
+    for (int i = 0; i < 425; i++) { 
         s64 argc = 3;
         char* argv[] = {"hello-world", "hello darkness", "15"};
-        Task task = task_init(&pmm_allocator, current_page_table_address, program_elf, argc, argv);
+        Task task = task_init(&pmm_allocator, (PageTableEntry*) current_page_table_address, program_elf, argc, argv);
         scheduler_queue_task(task);
     }
 
     scheduler_idle_loop();
 
-    /*
-    */
     while(1) {}
 
 }

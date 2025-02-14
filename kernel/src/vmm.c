@@ -1,12 +1,51 @@
 #include "stdint.h"
 #include <limine.h>
 #include <mem.h>
-#include <vmm.h>
 #include <assert.h>
 #include <elf.h>
 
 #define MAX_PAGE_TABLE_COUNT 1024
 #define MAX_REGIONS   1024
+
+typedef struct {
+    u64 start;
+    u64 size;
+} Region;
+
+typedef struct {
+    Region * buf;
+    u64 len;
+    u64 max_regions;
+} RegionList;
+
+
+enum frame_flags : u64 {
+   FRAME_PRESENT = (1 << 0), // 1
+   FRAME_WRITABLE = (1 << 1), // 2
+   FRAME_USER = (1 << 2), // 4
+   FRAME_HUGE = (1 << 7),
+   FRAME_NOEXEC = (1UL << 63)
+};
+
+
+typedef union PageTableEntry {
+   struct __attribute__((packed)) { 
+      u64 is_present: 1;
+      u64 is_writable: 1;
+      u64 is_user: 1;
+      u64 write_through: 1;
+      u64 cache_disable: 1;
+      u64 is_accessed: 1;
+      u64 ignore_1__: 1;
+      u64 reserved_must_be_zero___: 1;
+      u64 ignore_2__: 3;
+      u64 ignored_for_ordinary_paging_but_not_for_hlat_paging___: 1;
+      u64 page_frame: 51;
+      u64 disable_execute: 1;
+   };
+   u64 raw;
+} PageTableEntry;
+
 
 u64 align_up(u64 addr) {
     return (addr + 0xfff) & ~0xfff;
@@ -182,13 +221,13 @@ void page_table_active_walk_and_print(u64 vm_addr, u64 p4_table_address) {
 
 }
 
-Frame vmm_physical_frame(u64 p4_table_address, u64 vm_addr) {
+Frame vmm_physical_frame(PageTableEntry* p4_table_address, u64 vm_addr) {
     u64 p4_offset = (u64)(((u64)vm_addr >> 39) & 0x01ff);
     u64 p3_offset = (u64)(((u64)vm_addr >> 30) & 0x01ff);
     u64 p2_offset = (u64)(((u64)vm_addr >> 21) & 0x01ff);
     u64 p1_offset = (u64)(((u64)vm_addr >> 12) & 0x01ff);
 
-    PageTableEntry * p4_table  =  (PageTableEntry*)(p4_table_address);
+    PageTableEntry * p4_table  =  (p4_table_address);
 
     u64 p3_table_frame = p4_table[p4_offset].page_frame;
     PageTableEntry* p3_table = (void*)to_higher_half(frame_create(p3_table_frame << 12));
@@ -203,7 +242,14 @@ Frame vmm_physical_frame(u64 p4_table_address, u64 vm_addr) {
     return frame_create(physical_frame);
 }
 
-void region_map(PmmAllocator* pmm_allocator, Region vm_region, u64 p4_address, Frame page_frame, u64 flags)
+void page_table_set_zero(PageTableEntry * page_table) {
+    u64 max_pages_entries = FRAME_SIZE / sizeof(u64);
+    for (u64 i = 0; i < max_pages_entries; i++) {
+        page_table[i].raw = 0;
+    }
+}
+
+void region_map(PmmAllocator* pmm_allocator, Region vm_region, PageTableEntry* p4_address, Frame page_frame, u64 flags)
 {
     ASSERT(page_frame.ptr % 0x1000 == 0);
     ASSERT(vm_region.size % 0x1000 == 0);
@@ -218,7 +264,7 @@ void region_map(PmmAllocator* pmm_allocator, Region vm_region, u64 p4_address, F
         u64 p2_offset = (u64)(((u64)vm_addr >> 21) & 0x01ff);
         u64 p1_offset = (u64)(((u64)vm_addr >> 12) & 0x01ff);
 
-        PageTableEntry * p4_table  =  (PageTableEntry*)(p4_address);
+        PageTableEntry * p4_table  =  (p4_address);
         PageTableEntry * p3_table;
         PageTableEntry * p2_table;
         PageTableEntry * p1_table;
@@ -229,7 +275,7 @@ void region_map(PmmAllocator* pmm_allocator, Region vm_region, u64 p4_address, F
             ASSERT(p3_table_frame.ptr);
             p4_table[p4_offset].raw = (u64)(p3_table_frame.ptr) | page_flags;
             p3_table = (PageTableEntry*)to_higher_half(p3_table_frame);
-            memset((u8*)p3_table, 0, FRAME_SIZE / sizeof(u8) );
+            page_table_set_zero(p3_table);
         } else {
             u64 p3_table_frame = (p4_table[p4_offset].page_frame);
             p4_table[p4_offset].raw |= page_flags;
@@ -242,7 +288,7 @@ void region_map(PmmAllocator* pmm_allocator, Region vm_region, u64 p4_address, F
             ASSERT(p2_table_frame.ptr);
             p3_table[p3_offset].raw = (u64)(p2_table_frame.ptr) | page_flags;
             p2_table = (PageTableEntry*)to_higher_half(p2_table_frame);
-            memset((u8*)p2_table, 0, FRAME_SIZE / sizeof(u8) );
+            page_table_set_zero(p2_table);
         } else {
             u64 p2_table_frame = (p3_table[p3_offset].page_frame);
             p3_table[p3_offset].raw |= page_flags;
@@ -255,7 +301,7 @@ void region_map(PmmAllocator* pmm_allocator, Region vm_region, u64 p4_address, F
             ASSERT(p1_table_frame.ptr);
             p2_table[p2_offset].raw = (u64)(p1_table_frame.ptr) | page_flags;
             p1_table = (PageTableEntry*)to_higher_half(p1_table_frame);
-            memset((u8*)p1_table, 0, FRAME_SIZE / sizeof(u8) );
+            page_table_set_zero(p1_table);
         } else {
             u64 p1_table_frame = (p2_table[p2_offset].page_frame);
             p2_table[p2_offset].raw |= page_flags;
@@ -313,7 +359,7 @@ bool page_table_is_mapped_for_region(Region vm_region, PageTableEntry* p4_table)
     return false;
 }
 
-void region_unmap(PmmAllocator* pmm_allocator, Region vm_region, u64 p4_address) {
+void region_unmap(PmmAllocator* pmm_allocator, Region vm_region, PageTableEntry* p4_address) {
     (void)pmm_allocator;
     // CHECK: maybe we need to do invlg???
 
@@ -326,7 +372,7 @@ void region_unmap(PmmAllocator* pmm_allocator, Region vm_region, u64 p4_address)
         u64 p2_offset = (u64)(((u64)vm_addr >> 21) & 0x01ff);
         u64 p1_offset = (u64)(((u64)vm_addr >> 12) & 0x01ff);
 
-        PageTableEntry * p4_table  =  (PageTableEntry*)(p4_address);
+        PageTableEntry * p4_table  =  (p4_address);
         PageTableEntry * p3_table;
         PageTableEntry * p2_table;
         PageTableEntry * p1_table;

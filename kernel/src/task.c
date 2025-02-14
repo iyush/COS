@@ -8,7 +8,7 @@ typedef enum TaskState{
 
 typedef struct Task {
     u64 id;
-    u64 page_table_address;
+    PageTableEntry* page_table_address;
     u64 stack_address;
     u64 entry_address;
     TaskState state;
@@ -23,9 +23,9 @@ extern u64 _KERNEL_START;
 #define STACK_BEGIN_ADDRESS 0x7ff000000000UL
 #define STACK_SIZE 0x100000 // 1Mib;
 
-Task task_init(PmmAllocator* pmm_allocator, u64 current_page_table_address, Elf64 program_elf, s64 argc, char** argv) {
-    u64 page_table_address = to_higher_half(page_table_alloc_frame(pmm_allocator));
-    memset((u8*)page_table_address, 0, FRAME_SIZE / sizeof(u8) );
+Task task_init(PmmAllocator* pmm_allocator, PageTableEntry* current_page_table_address, Elf64 program_elf, s64 argc, char** argv) {
+    PageTableEntry* page_table_address = (PageTableEntry*) to_higher_half(page_table_alloc_frame(pmm_allocator));
+    page_table_set_zero(page_table_address);
     // RegionList region_list = regionlist_create(pmm_allocator, MAX_REGION_LIST_TASK);
 
     { // parsing kernel elf
@@ -116,6 +116,15 @@ Task task_init(PmmAllocator* pmm_allocator, u64 current_page_table_address, Elf6
     region_map(pmm_allocator, argv_region, current_page_table_address, argv_frame, FRAME_PRESENT | FRAME_WRITABLE);
     region_map(pmm_allocator, stack_region, current_page_table_address, stack_frame, FRAME_PRESENT | FRAME_WRITABLE); // for pushing the argv pointers to stack.
 
+    // first lets empty the stack
+    /*
+    u8* it = (u8*) stack_region.start;
+    for (u64 i = 0; i < stack_region.size; i++) {
+        it[i] = 0;
+    }
+    */
+
+
     u64* stack_pos = (u64*)(stack_region.start + stack_region.size);
     char* current_address = (char*)argv_region.start;
     bochs_breakpoint();
@@ -144,7 +153,7 @@ Task task_init(PmmAllocator* pmm_allocator, u64 current_page_table_address, Elf6
 }
 
 void task_set_page_table_and_jump(Task task) {
-    u64 page_table_frame = to_lower_half(task.page_table_address).ptr;
+    u64 page_table_frame = to_lower_half((u64)task.page_table_address).ptr;
     __asm__ volatile(
         "\n mov %0, %%cr3"                  // load the page table
         "\n mov %1, %%rsp"                  // change the stack pointer

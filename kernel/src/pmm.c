@@ -8,7 +8,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#define FRAME_SIZE 4096
+#define FRAME_SIZE 4096UL
 
 u64 _pmm_cr4() {
    u64 cr4;
@@ -147,22 +147,8 @@ PmmAllocator pmm_init(struct limine_memmap_request memmap_request, struct limine
 {
     PmmAllocator allocator = {0};
 
-    u64 highest_frame_top = 0;
-    for (u64 i = 0; i < memmap_request.response->entry_count; i++)
-    {
-        u64 length = memmap_request.response->entries[i]->length;
-        u64 type = memmap_request.response->entries[i]->type;
-        u64 base = memmap_request.response->entries[i]->base;
-        if (type == LIMINE_MEMMAP_USABLE) {
-            if (base + length > highest_frame_top)
-            {
-                highest_frame_top = base + length;
-            }
-        }
-    }
-
-    allocator.bmp_size = ((highest_frame_top + FRAME_SIZE) / FRAME_SIZE) / 64;
     u64 biggest_usable_base = 0;
+    u64 highest_frame_top = 0;
     u64 biggest_usable_length = 0;
     for (u64 i = 0; i < memmap_request.response->entry_count; i++)
     {
@@ -178,6 +164,12 @@ PmmAllocator pmm_init(struct limine_memmap_request memmap_request, struct limine
                 biggest_usable_base = base;
                 biggest_usable_length = length;
             }
+
+            if (base + length > highest_frame_top)
+            {
+                highest_frame_top = base + length;
+                ksp("---------- highest_frame_top: %lx\n", highest_frame_top);
+            }
         }
 
         char * type_str = "USABLE";
@@ -191,6 +183,9 @@ PmmAllocator pmm_init(struct limine_memmap_request memmap_request, struct limine
 
         ksp("%lx %lx %s\n", base, length, type_str);
     }
+
+    ksp("----------final------------ highest_frame_top: %lx\n", highest_frame_top);
+    allocator.bmp_size = ((highest_frame_top + FRAME_SIZE) / FRAME_SIZE) / 64UL;
 
     ksp("bmp_size %lx can fit in region with base %lx and length %lx\n", allocator.bmp_size, biggest_usable_base, biggest_usable_length);
 
@@ -282,6 +277,7 @@ Frame pmm_alloc_frame(PmmAllocator * allocator, u64 n_frames)
     if (frame.ptr) {
         bmp_set_used(allocator, frame, n_frames);
     }
+    ksp("frame 0x%lx asked: %ld total_allocated_frames: %ld max_frames: %ld\n", frame.ptr, n_frames, pmm_frames_total_allocated, allocator->bmp_size * 64);
     return frame;
 }
 
