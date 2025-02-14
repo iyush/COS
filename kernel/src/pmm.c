@@ -27,7 +27,7 @@ u64 pmm_frames_total_allocated = 0;
 
 
 typedef struct PmmAllocator {
-    u8* bmp;
+    u64* bmp;
     u64 bmp_size;
 } PmmAllocator;
 
@@ -116,10 +116,10 @@ void bmp_set_free(PmmAllocator* allocator, Frame frame_to_free, u64 n_frames)
     for (u64 i = 0; i < n_frames; i++)
     {
         frame = frame_start + i;
-        frame_big_index = (frame / 8);
-        frame_sma_index = (frame % 8);
+        frame_big_index = (frame / 64);
+        frame_sma_index = (frame % 64);
 
-        allocator->bmp[frame_big_index] = allocator->bmp[frame_big_index] & ~(1 << frame_sma_index);
+        allocator->bmp[frame_big_index] = allocator->bmp[frame_big_index] & ~(1UL << frame_sma_index);
     }
 }
 
@@ -134,10 +134,10 @@ void bmp_set_used(PmmAllocator* allocator, Frame frame_ptr, u64 n_frames)
     for (u64 i = 0; i < n_frames; i++)
     {
         frame = frame_start + i;
-        frame_big_index = (frame / 8);
-        frame_sma_index = (frame % 8);
+        frame_big_index = (frame / 64);
+        frame_sma_index = (frame % 64);
 
-        allocator->bmp[frame_big_index] = allocator->bmp[frame_big_index] | (1 << frame_sma_index);
+        allocator->bmp[frame_big_index] = allocator->bmp[frame_big_index] | (1UL << frame_sma_index);
     }
 
     pmm_frames_total_allocated += n_frames;
@@ -151,14 +151,17 @@ PmmAllocator pmm_init(struct limine_memmap_request memmap_request, struct limine
     for (u64 i = 0; i < memmap_request.response->entry_count; i++)
     {
         u64 length = memmap_request.response->entries[i]->length;
+        u64 type = memmap_request.response->entries[i]->type;
         u64 base = memmap_request.response->entries[i]->base;
-        if (base + length > highest_frame_top)
-        {
-            highest_frame_top = base + length;
+        if (type == LIMINE_MEMMAP_USABLE) {
+            if (base + length > highest_frame_top)
+            {
+                highest_frame_top = base + length;
+            }
         }
     }
 
-    allocator.bmp_size = ((highest_frame_top + FRAME_SIZE) / FRAME_SIZE) / 8;
+    allocator.bmp_size = ((highest_frame_top + FRAME_SIZE) / FRAME_SIZE) / 64;
     u64 biggest_usable_base = 0;
     u64 biggest_usable_length = 0;
     for (u64 i = 0; i < memmap_request.response->entry_count; i++)
@@ -191,12 +194,16 @@ PmmAllocator pmm_init(struct limine_memmap_request memmap_request, struct limine
 
     ksp("bmp_size %lx can fit in region with base %lx and length %lx\n", allocator.bmp_size, biggest_usable_base, biggest_usable_length);
 
-    allocator.bmp = (u8 *)biggest_usable_base + hhdm_request.response->offset;
+    allocator.bmp = (u64 *)biggest_usable_base + hhdm_request.response->offset / 8;
 
     ksp("kernel physical start: %lx\n", kernel_address_request.response->physical_base);
     ksp("kernel virtual start: %lx\n", kernel_address_request.response->virtual_base);
 
-    memset(allocator.bmp, 0xff, allocator.bmp_size);
+    for (u64 i = 0; i < allocator.bmp_size; i++)
+    {
+        allocator.bmp[i] = 0xffffffffffffffff;
+    }
+
 
     for (u64 i = 0; i < memmap_request.response->entry_count; i++)
     {
@@ -237,9 +244,9 @@ Frame pmm_find_free_frame(PmmAllocator *allocator, u64 n_frames)
 
     for (u64 i = 0; i < allocator->bmp_size; i++)
     {
-        u8 super_frame = allocator->bmp[i];
-        if (super_frame != 0xff) {
-            for (u64 j = 0; j < 8; j++)
+        u64 super_frame = allocator->bmp[i];
+        if (super_frame != 0xffffffffffffffff) {
+            for (u64 j = 0; j < 64; j++)
             {
                 if (((super_frame >> j) & 1) == 0)
                 {
@@ -249,7 +256,7 @@ Frame pmm_find_free_frame(PmmAllocator *allocator, u64 n_frames)
                 }
 
                 if (zero_count >= n_frames) {
-                    zero_idx = (i * 8 + j) - (n_frames - 1);
+                    zero_idx = (i * 64 + j) - (n_frames - 1);
                     result_found = true;
                     goto end;
                 }
@@ -275,7 +282,6 @@ Frame pmm_alloc_frame(PmmAllocator * allocator, u64 n_frames)
     if (frame.ptr) {
         bmp_set_used(allocator, frame, n_frames);
     }
-    ksp("frame 0x%lx asked: %ld total_allocated_frames: %ld max_frames: %ld\n", frame.ptr, n_frames, pmm_frames_total_allocated, allocator->bmp_size / 8);
     return frame;
 }
 
