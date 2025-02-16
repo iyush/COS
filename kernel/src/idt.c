@@ -1,11 +1,32 @@
-#ifndef IDT_H
-#define IDT_H
-
 #include "stdint.h"
 #include "./kio.h"
 #include "./pic.c"
-#include "idt.h"
 #include "scheduler.h"
+
+struct __attribute__((packed)) regs {
+   s64 rax;
+   s64 rbx;
+   s64 rcx;
+   s64 rdx;
+   s64 rbp;
+   s64 rsi;
+   s64 rdi;
+   s64 rsp;
+   s64 r8;
+   s64 r9;
+   s64 r10;
+   s64 r11;
+   s64 r12;
+   s64 r13;
+   s64 r14;
+   s64 r15;
+
+   s64 rflags;
+   s64 interrupt_number;
+   s64 error_code;
+   s64 rip;
+};
+
 
 typedef struct {
    u16 offset_1;        // offset bits 0..15
@@ -98,7 +119,9 @@ void all_interrupts_handler(struct regs* r)
                         break;
                      case 1:
                         {
-                           output_to_console((char*)r->rdi, r->rsi);
+                           s32 size = (s32) r->rsi;
+                           ASSERT(size == r->rsi); // We make sure that we do not pass 64 bit number in the argument. output to console only supports 32 bit.
+                           output_to_console((char*)r->rdi, size);
                         }
                         break;
                   };
@@ -221,5 +244,3 @@ void init_pic(void) {
    // until we implement keyboard drivers.
    // pic_disable_all_interrupts(); // here masking means disabling
 }
-
-#endif

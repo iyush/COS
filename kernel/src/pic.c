@@ -35,10 +35,10 @@
 
 #define ICW4_SFNM	           (1<<4)	// Special Fully Nested Mode. Used in systems with a large amount of cascaded controllers.
                                   
-void pic_remap(u8 master_offset, u8 slave_offset) {
+void pic_remap(s8 master_offset, s8 slave_offset) {
    // save the current state or "masks"
-   u8 master_data = inb(PIC_MASTER_DATA);
-   u8 slave_data = inb(PIC_SLAVE_DATA);
+   s8 master_data = inb(PIC_MASTER_DATA);
+   s8 slave_data = inb(PIC_SLAVE_DATA);
 
    // start the initialization with cascade mode.
    outb(PIC_MASTER_COMMAND, ICW1_INIT | ICW1_IC4); io_wait();
@@ -69,8 +69,8 @@ void pic_remap(u8 master_offset, u8 slave_offset) {
 
 // 'masking' here means disabling by setting the bit to be 1.
 void pic_disable_all_interrupts(void) {
-   outb(PIC_MASTER_DATA, 0xff);
-   outb(PIC_SLAVE_DATA, 0xff);
+   outb(PIC_MASTER_DATA, (s8)(u8)0xff); // THIS IS FINE
+   outb(PIC_SLAVE_DATA, (s8)(u8)0xff); // THIS IS FINE
 }
 
 void pic_send_end_of_interrupt() {

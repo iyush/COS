@@ -5,7 +5,6 @@
 #include <stdbool.h>
 
 #include "./kio.h"
-#include "./idt.h"
 #include "./io.h"
 #include "stdint.h"
 #include "bochs.h"
@@ -14,10 +13,10 @@
 #include "cpu.h"
 
 
+#include "./io.c"
 #include "./idt.c"
 #include "./pic.c"
 #include "./kio.c"
-#include "./io.c"
 #include "./kstring.c"
 #include "pmm.c"
 #include "vmm.c"
@@ -102,7 +101,7 @@ void _start(void)
 
     // TODO: 450+ causes general protection fault here somehow.
     for (int i = 0; i < 425; i++) { 
-        s64 argc = 3;
+        u64 argc = 3;
         char* argv[] = {"hello-world", "hello darkness", "15"};
         Task task = task_init(&pmm_allocator, (PageTableEntry*) current_page_table_address, program_elf, argc, argv);
         scheduler_queue_task(task);

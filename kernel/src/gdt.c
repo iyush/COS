@@ -28,7 +28,7 @@ void gdt_set_gate(
     gdt.gdt_entries[num].l = 1;     // we will always be executing/accessing 64 bit instructions/data.
     gdt.gdt_entries[num].db = 0;    // If the L-bit is set, then the D-bit must be cleared
     gdt.gdt_entries[num].g = granularity;
-    gdt.gdt_entries[num].base_high = (base >> 24) & 0xFF;
+    gdt.gdt_entries[num].base_high = (u8)((base >> 24) & 0xFF);
 }
 
 
@@ -53,7 +53,7 @@ void gdt_set_tss(
     gdt.tss_entries[num].db = 0;
     gdt.tss_entries[num].g = granularity;
     gdt.tss_entries[num].base_high = (base >> 24) & 0xFF;
-    gdt.tss_entries[num].base_top = (base >> 32) & 0xFFFFFFFF;
+    gdt.tss_entries[num].base_top = (u32)((base >> 32) & 0xFFFFFFFF);
     gdt.tss_entries[num].reserved = 0;
 }
 

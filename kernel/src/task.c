@@ -23,7 +23,7 @@ extern u64 _KERNEL_START;
 #define STACK_BEGIN_ADDRESS 0x7ff000000000UL
 #define STACK_SIZE 0x100000 // 1Mib;
 
-Task task_init(PmmAllocator* pmm_allocator, PageTableEntry* current_page_table_address, Elf64 program_elf, s64 argc, char** argv) {
+Task task_init(PmmAllocator* pmm_allocator, PageTableEntry* current_page_table_address, Elf64 program_elf, u64 argc, char** argv) {
     PageTableEntry* page_table_address = (PageTableEntry*) to_higher_half(page_table_alloc_frame(pmm_allocator));
     page_table_set_zero(page_table_address);
     // RegionList region_list = regionlist_create(pmm_allocator, MAX_REGION_LIST_TASK);
@@ -92,56 +92,63 @@ Task task_init(PmmAllocator* pmm_allocator, PageTableEntry* current_page_table_a
     region_map(pmm_allocator, stack_region, page_table_address, stack_frame, FRAME_PRESENT | FRAME_WRITABLE | FRAME_USER);
     page_table_active_walk_and_print(stack_region.start, (u64) page_table_address);
 
-    // setting up the space for argv..............
-    u64 argv_size = 0;
-    for (s64 i = 0; i < argc; i++) {
-        argv_size += strlen(argv[i]);
-    }
-    argv_size += argc * 3; // this is for argc * 3 '\0' we will put at the end of the string.
-    argv_size = align_up(argv_size);
-    u64 argv_size_pages = argv_size / FRAME_SIZE;
-    Region argv_region = region_create(max_v_address, argv_size);
-    // regionlist_append(&region_list, argv_region);
-    Frame argv_frame = pmm_alloc_frame(pmm_allocator, argv_size_pages);
-    ASSERT(argv_frame.ptr);
-    region_map(pmm_allocator, argv_region, page_table_address, argv_frame, FRAME_PRESENT | FRAME_USER);
-
-    // Making sure that the region is not already mapped in the current page table, as that would wreak havok.
-    // We need to be clever here and make sure we chose another region, setting asserts here means we postpone that until the future.
-    ASSERT(!page_table_is_mapped_for_region(stack_region, (PageTableEntry*)current_page_table_address));
-    ASSERT(!page_table_is_mapped_for_region(argv_region, (PageTableEntry*)current_page_table_address));
-
-    // we need to fill in data for argv, we will temporary map the argv space using the current page table adress, fill it and unmap again.
-    // In addition to that, we also need to temporariliy map the stack using the current page table address, push the argc and argv pointers and unmap.
-    region_map(pmm_allocator, argv_region, current_page_table_address, argv_frame, FRAME_PRESENT | FRAME_WRITABLE);
-    region_map(pmm_allocator, stack_region, current_page_table_address, stack_frame, FRAME_PRESENT | FRAME_WRITABLE); // for pushing the argv pointers to stack.
-
-    // first lets empty the stack
-    /*
-    u8* it = (u8*) stack_region.start;
-    for (u64 i = 0; i < stack_region.size; i++) {
-        it[i] = 0;
-    }
-    */
-
 
     u64* stack_pos = (u64*)(stack_region.start + stack_region.size);
-    char* current_address = (char*)argv_region.start;
-    bochs_breakpoint();
-    for (s64 i = argc - 1; i >= 0; i--) {
-        u64 str_len = strlen(argv[i]);
-        stack_pos--;
-        *stack_pos = (u64)current_address;
-        memcpy(current_address, argv[i], str_len + 1);
-        current_address += str_len;
-        *current_address = '\0';
-        current_address++;
-    }
-    stack_pos--;
-    *stack_pos = argc;
+    if (argc > 0) {
+        // setting up the space for argv..............
+        u64 argv_size = 0;
+        for (u64 i = 0; i < argc; i++) {
+            int len = strlen(argv[i]);
+            ASSERT(len > 0);
+            argv_size += (u64) len;
+        }
+        argv_size += argc * 3; // this is for argc * 3 '\0' we will put at the end of the string.
+        argv_size = align_up(argv_size);
+        u64 argv_size_pages = argv_size / FRAME_SIZE;
+        Region argv_region = region_create(max_v_address, argv_size);
+        // regionlist_append(&region_list, argv_region);
+        Frame argv_frame = pmm_alloc_frame(pmm_allocator, argv_size_pages);
+        ASSERT(argv_frame.ptr);
+        region_map(pmm_allocator, argv_region, page_table_address, argv_frame, FRAME_PRESENT | FRAME_USER);
 
-    region_unmap(pmm_allocator, argv_region, current_page_table_address);
-    region_unmap(pmm_allocator, stack_region, current_page_table_address);
+        // Making sure that the region is not already mapped in the current page table, as that would wreak havok.
+        // We need to be clever here and make sure we chose another region, setting asserts here means we postpone that until the future.
+        ASSERT(!page_table_is_mapped_for_region(stack_region, (PageTableEntry*)current_page_table_address));
+        ASSERT(!page_table_is_mapped_for_region(argv_region, (PageTableEntry*)current_page_table_address));
+
+        // we need to fill in data for argv, we will temporary map the argv space using the current page table adress, fill it and unmap again.
+        // In addition to that, we also need to temporariliy map the stack using the current page table address, push the argc and argv pointers and unmap.
+        region_map(pmm_allocator, argv_region, current_page_table_address, argv_frame, FRAME_PRESENT | FRAME_WRITABLE);
+        region_map(pmm_allocator, stack_region, current_page_table_address, stack_frame, FRAME_PRESENT | FRAME_WRITABLE); // for pushing the argv pointers to stack.
+
+        // first lets empty the stack
+        /*
+           u8* it = (u8*) stack_region.start;
+           for (u64 i = 0; i < stack_region.size; i++) {
+           it[i] = 0;
+           }
+           */
+
+
+        char* current_address = (char*)argv_region.start;
+        bochs_breakpoint();
+        for (s64 i = (s64)argc - 1; i >= 0; i--) { // We assume that argc > 0.
+            int len = strlen(argv[i]);
+            ASSERT(len > 0);
+            u64 str_len = (u64) len;
+            stack_pos--;
+            *stack_pos = (u64)current_address;
+            memcpy(current_address, argv[i], str_len + 1);
+            current_address += str_len;
+            *current_address = '\0';
+            current_address++;
+        }
+        stack_pos--;
+        *stack_pos = argc;
+
+        region_unmap(pmm_allocator, argv_region, current_page_table_address);
+        region_unmap(pmm_allocator, stack_region, current_page_table_address);
+    }
 
     Task task = {
         .stack_address = (u64)stack_pos,

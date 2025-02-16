@@ -46,11 +46,11 @@ typedef union PageTableEntry {
 
 
 u64 align_up(u64 addr) {
-    return (addr + 0xfff) & ~0xfff;
+    return (addr + 0xfff) & ~0xfffUL;
 }
 
 u64 align_down(u64 addr) {
-    return addr & ~0xfff;
+    return addr & ~0xfffUL;
 }
 
 
