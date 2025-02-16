@@ -277,7 +277,7 @@ Frame pmm_alloc_frame(PmmAllocator * allocator, u64 n_frames)
     if (frame.ptr) {
         bmp_set_used(allocator, frame, n_frames);
     }
-    ksp("frame 0x%lx asked: %ld total_allocated_frames: %ld max_frames: %ld\n", frame.ptr, n_frames, pmm_frames_total_allocated, allocator->bmp_size * 64);
+    // ksp("frame 0x%lx asked: %ld total_allocated_frames: %ld max_frames: %ld\n", frame.ptr, n_frames, pmm_frames_total_allocated, allocator->bmp_size * 64);
     return frame;
 }
 

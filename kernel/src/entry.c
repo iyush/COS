@@ -13,6 +13,7 @@
 #include "cpu.h"
 
 
+#include "tinyubsan.c"
 #include "./io.c"
 #include "./idt.c"
 #include "./pic.c"
@@ -100,7 +101,7 @@ void _start(void)
     scheduler_init();
 
     // TODO: 450+ causes general protection fault here somehow.
-    for (int i = 0; i < 425; i++) { 
+    for (int i = 0; i < 1; i++) { 
         u64 argc = 3;
         char* argv[] = {"hello-world", "hello darkness", "15"};
         Task task = task_init(&pmm_allocator, (PageTableEntry*) current_page_table_address, program_elf, argc, argv);

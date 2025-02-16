@@ -90,7 +90,7 @@ Task task_init(PmmAllocator* pmm_allocator, PageTableEntry* current_page_table_a
     Region stack_region = region_create(STACK_BEGIN_ADDRESS, STACK_SIZE);
     // regionlist_append(&region_list, stack_region);
     region_map(pmm_allocator, stack_region, page_table_address, stack_frame, FRAME_PRESENT | FRAME_WRITABLE | FRAME_USER);
-    page_table_active_walk_and_print(stack_region.start, (u64) page_table_address);
+    // page_table_active_walk_and_print(stack_region.start, (u64) page_table_address);
 
 
     u64* stack_pos = (u64*)(stack_region.start + stack_region.size);

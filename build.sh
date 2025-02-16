@@ -6,7 +6,7 @@ rm -rf build/
 mkdir -p build/
 
 x86_64-elf-gcc \
-        -g -pipe -Wall -Wextra -Wconversion -Wpedantic -Werror -std=c99 \
+        -g -pipe -Wall -Wextra -Wconversion -Wpedantic -Werror -ggdb -fsanitize=undefined -std=c99 \
         -nodefaultlibs -nostdlib -fno-builtin -ffreestanding \
         -fno-stack-protector -fno-stack-check -fno-lto -fPIE \
         -march=x86-64 -mno-80387 -mno-mmx -mno-sse -mno-sse2 \
