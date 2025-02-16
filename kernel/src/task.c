@@ -29,8 +29,8 @@ Task task_init(PmmAllocator* pmm_allocator, PageTableEntry* current_page_table_a
     // RegionList region_list = regionlist_create(pmm_allocator, MAX_REGION_LIST_TASK);
 
     { // parsing kernel elf
-        void* kernel_address = kfile_request.response->kernel_file->address;
-        u64 kernel_size = (u64)kfile_request.response->kernel_file->size;
+        void* kernel_address = ctx_get_kernel_file_address();
+        u64 kernel_size =  ctx_get_kernel_file_size();
         Elf64 kernel_elf = elf_parse(kernel_address, kernel_size);
         ASSERT(kernel_elf.p_headers_len > 0);
         ASSERT(kernel_elf.s_headers_len > 0);

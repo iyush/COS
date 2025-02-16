@@ -143,18 +143,18 @@ void bmp_set_used(PmmAllocator* allocator, Frame frame_ptr, u64 n_frames)
     pmm_frames_total_allocated += n_frames;
 }
 
-PmmAllocator pmm_init(struct limine_memmap_request memmap_request, struct limine_hhdm_request hhdm_request, struct limine_kernel_address_request kernel_address_request)
+PmmAllocator pmm_init(struct limine_memmap_request memmap_req, struct limine_hhdm_request hhdm_req, struct limine_kernel_address_request kernel_address_req)
 {
     PmmAllocator allocator = {0};
 
     u64 biggest_usable_base = 0;
     u64 highest_frame_top = 0;
     u64 biggest_usable_length = 0;
-    for (u64 i = 0; i < memmap_request.response->entry_count; i++)
+    for (u64 i = 0; i < memmap_req.response->entry_count; i++)
     {
-        u64 type = memmap_request.response->entries[i]->type;
-        u64 length = memmap_request.response->entries[i]->length;
-        u64 base = memmap_request.response->entries[i]->base;
+        u64 type = memmap_req.response->entries[i]->type;
+        u64 length = memmap_req.response->entries[i]->length;
+        u64 base = memmap_req.response->entries[i]->base;
 
 
         if (length > allocator.bmp_size && type == LIMINE_MEMMAP_USABLE)
@@ -189,10 +189,10 @@ PmmAllocator pmm_init(struct limine_memmap_request memmap_request, struct limine
 
     ksp("bmp_size %lx can fit in region with base %lx and length %lx\n", allocator.bmp_size, biggest_usable_base, biggest_usable_length);
 
-    allocator.bmp = (u64 *)biggest_usable_base + hhdm_request.response->offset / 8;
+    allocator.bmp = (u64 *)biggest_usable_base + hhdm_req.response->offset / 8;
 
-    ksp("kernel physical start: %lx\n", kernel_address_request.response->physical_base);
-    ksp("kernel virtual start: %lx\n", kernel_address_request.response->virtual_base);
+    ksp("kernel physical start: %lx\n", kernel_address_req.response->physical_base);
+    ksp("kernel virtual start: %lx\n", kernel_address_req.response->virtual_base);
 
     for (u64 i = 0; i < allocator.bmp_size; i++)
     {
@@ -200,11 +200,11 @@ PmmAllocator pmm_init(struct limine_memmap_request memmap_request, struct limine
     }
 
 
-    for (u64 i = 0; i < memmap_request.response->entry_count; i++)
+    for (u64 i = 0; i < memmap_req.response->entry_count; i++)
     {
-        u64 type = memmap_request.response->entries[i]->type;
-        u64 length = memmap_request.response->entries[i]->length;
-        u64 base = memmap_request.response->entries[i]->base;
+        u64 type = memmap_req.response->entries[i]->type;
+        u64 length = memmap_req.response->entries[i]->length;
+        u64 base = memmap_req.response->entries[i]->base;
 
         if (type == LIMINE_MEMMAP_USABLE)
         {

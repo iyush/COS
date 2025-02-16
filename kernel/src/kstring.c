@@ -11,36 +11,36 @@
 
 #define BUF_MAX 256
 
-static int str_from_uint(unsigned int val, unsigned int base, char* buffer, int buffer_offset) {
-    char sec_buffer[BUF_MAX] = {0};
+static int str_from_uint(unsigned int val, unsigned int base, char* buf, int buf_offset) {
+    char sec_buf[BUF_MAX] = {0};
     int j = BUF_MAX - 2;
     for (; val && j; --j, val /= base) {
-        sec_buffer[j] = "0123456789abcdefghijklmnopqrstuvwxyz"[val % base];
+        sec_buf[j] = "0123456789abcdefghijklmnopqrstuvwxyz"[val % base];
     }
 
     for(int k = j + 1; k < BUF_MAX-1 ; k++) {
-        buffer[buffer_offset] = sec_buffer[k];
-        buffer_offset++;
+        buf[buf_offset] = sec_buf[k];
+        buf_offset++;
     }
 
-    // returns new buffer offset
-    return buffer_offset;
+    // returns new buf offset
+    return buf_offset;
 }
 
-static int str_from_ulongint(unsigned long int val, unsigned long int base, char* buffer, int buffer_offset) {
-    char sec_buffer[BUF_MAX] = {0};
+static int str_from_ulongint(unsigned long int val, unsigned long int base, char* buf, int buf_offset) {
+    char sec_buf[BUF_MAX] = {0};
     int j = BUF_MAX - 2;
     for (; val && j; --j, val /= base) {
-        sec_buffer[j] = "0123456789abcdefghijklmnopqrstuvwxyz"[val % base];
+        sec_buf[j] = "0123456789abcdefghijklmnopqrstuvwxyz"[val % base];
     }
 
     for(int k = j + 1; k < BUF_MAX-1 ; k++) {
-        buffer[buffer_offset] = sec_buffer[k];
-        buffer_offset++;
+        buf[buf_offset] = sec_buf[k];
+        buf_offset++;
     }
 
-    // returns new buffer offset
-    return buffer_offset;
+    // returns new buf offset
+    return buf_offset;
 }
 
 // make this a size_t
@@ -81,11 +81,11 @@ int strcmp(const char * s1, char * s2) {
     return ret_val;
 }
 
-static void _parse_inner_string(char * f_str, char * buffer, int * curr_str_idx, int * i, bool is_long, va_list args) {
+static void _parse_inner_string(char * f_str, char * buf, int * curr_str_idx, int * i, bool is_long, va_list args) {
     switch (f_str[*i+1]) {
         case '%':
             {
-                buffer[*curr_str_idx] = '%';
+                buf[*curr_str_idx] = '%';
                 (*curr_str_idx)++;
                 (*i)++;
                 break;
@@ -94,7 +94,7 @@ static void _parse_inner_string(char * f_str, char * buffer, int * curr_str_idx,
             {
                 char to_put = (char)va_arg(args, int);
 
-                buffer[*curr_str_idx] = to_put;
+                buf[*curr_str_idx] = to_put;
                 (*curr_str_idx)++;
                 (*i)++;
                 break;
@@ -106,7 +106,7 @@ static void _parse_inner_string(char * f_str, char * buffer, int * curr_str_idx,
                 // we append
                 int j = 0;
                 while (to_put[j] != 0) {
-                    buffer[*curr_str_idx] = to_put[j];
+                    buf[*curr_str_idx] = to_put[j];
                     (*curr_str_idx)++;
                     j++;
                 }
@@ -123,10 +123,10 @@ static void _parse_inner_string(char * f_str, char * buffer, int * curr_str_idx,
                 // https://godbolt.org/z/cTPareMMn
                 if (is_long) {
                     unsigned long int val = va_arg(args, unsigned long int);
-                    *curr_str_idx = str_from_ulongint(val, 16, buffer, *curr_str_idx);
+                    *curr_str_idx = str_from_ulongint(val, 16, buf, *curr_str_idx);
                 } else {
                     unsigned int val = va_arg(args, unsigned int);
-                    *curr_str_idx = str_from_uint(val, 16, buffer, *curr_str_idx);
+                    *curr_str_idx = str_from_uint(val, 16, buf, *curr_str_idx);
                 }
 
                 (*i)++;
@@ -135,12 +135,12 @@ static void _parse_inner_string(char * f_str, char * buffer, int * curr_str_idx,
 
         case 'p':
             {
-                buffer[*curr_str_idx] = '0';
+                buf[*curr_str_idx] = '0';
                 (*curr_str_idx)++;
-                buffer[*curr_str_idx] = 'x';
+                buf[*curr_str_idx] = 'x';
                 (*curr_str_idx)++;
                 unsigned long int val = va_arg(args, unsigned long int);
-                *curr_str_idx = str_from_ulongint(val, 16, buffer, *curr_str_idx);
+                *curr_str_idx = str_from_ulongint(val, 16, buf, *curr_str_idx);
                 (*i)++;
                 break;
             }
@@ -150,10 +150,10 @@ static void _parse_inner_string(char * f_str, char * buffer, int * curr_str_idx,
                 // NOTE: this is not standard, other c compilers does not have a binary mode!
                 if (is_long) {
                     unsigned long int val = va_arg(args, unsigned long int);
-                    *curr_str_idx = str_from_ulongint(val, 2, buffer, *curr_str_idx);
+                    *curr_str_idx = str_from_ulongint(val, 2, buf, *curr_str_idx);
                 } else {
                     unsigned int val = va_arg(args, unsigned int);
-                    *curr_str_idx = str_from_uint(val, 2, buffer, *curr_str_idx);
+                    *curr_str_idx = str_from_uint(val, 2, buf, *curr_str_idx);
                 }
 
                 (*i)++;
@@ -165,12 +165,12 @@ static void _parse_inner_string(char * f_str, char * buffer, int * curr_str_idx,
                 unsigned int val = va_arg(args, unsigned int);
 
                 if (val == 0) {
-                    buffer[*curr_str_idx] = '0';
+                    buf[*curr_str_idx] = '0';
                     (*curr_str_idx)++;
                     (*i)++;
                     break;
                 }
-                *curr_str_idx = str_from_uint((unsigned int) val, 10, buffer, *curr_str_idx);
+                *curr_str_idx = str_from_uint((unsigned int) val, 10, buf, *curr_str_idx);
 
                 (*i)++;
                 break;
@@ -181,33 +181,33 @@ static void _parse_inner_string(char * f_str, char * buffer, int * curr_str_idx,
                 if (!is_long) {
                     int val = va_arg(args, int);
                     if (val < 0) {
-                        buffer[*curr_str_idx] = '-';
+                        buf[*curr_str_idx] = '-';
                         (*curr_str_idx)++;
                         val *= -1;
                     }
 
                     if (val == 0) {
-                        buffer[*curr_str_idx] = '0';
+                        buf[*curr_str_idx] = '0';
                         (*curr_str_idx)++;
                         (*i)++;
                         break;
                     }
-                    *curr_str_idx = str_from_uint((unsigned int) val, 10, buffer, *curr_str_idx);
+                    *curr_str_idx = str_from_uint((unsigned int) val, 10, buf, *curr_str_idx);
                 } else if (is_long) {
                     long int val = va_arg(args, long int);
                     if (val < 0) {
-                        buffer[*curr_str_idx] = '-';
+                        buf[*curr_str_idx] = '-';
                         (*curr_str_idx)++;
                         val *= -1;
                     }
 
                     if (val == 0) {
-                        buffer[*curr_str_idx] = '0';
+                        buf[*curr_str_idx] = '0';
                         (*curr_str_idx)++;
                         (*i)++;
                         break;
                     }
-                    *curr_str_idx = str_from_ulongint((unsigned long int )val, 10, buffer, *curr_str_idx);
+                    *curr_str_idx = str_from_ulongint((unsigned long int )val, 10, buf, *curr_str_idx);
                 }
 
                 (*i)++;
@@ -215,7 +215,7 @@ static void _parse_inner_string(char * f_str, char * buffer, int * curr_str_idx,
             }
 
         default:
-            buffer[*curr_str_idx] = f_str[*i];
+            buf[*curr_str_idx] = f_str[*i];
             (*curr_str_idx)++;
             break;
     }
@@ -223,7 +223,7 @@ static void _parse_inner_string(char * f_str, char * buffer, int * curr_str_idx,
 
 
 
-int kvsprintf(char* buffer, char * f_str, va_list args) {
+int kvsprintf(char* buf, char * f_str, va_list args) {
     int i = 0;
     int curr_str_idx = 0;
 
@@ -232,16 +232,16 @@ int kvsprintf(char* buffer, char * f_str, va_list args) {
     while (f_str[i] != '\0') {
         if (f_str[i] != '%') {
             // default
-            buffer[curr_str_idx] = f_str[i];
+            buf[curr_str_idx] = f_str[i];
             curr_str_idx++;
         } else {
             if (f_str[i+1] == 'l') {
                 is_long = true;
                 i++;
-                _parse_inner_string(f_str, buffer, &curr_str_idx, &i, is_long, args);
+                _parse_inner_string(f_str, buf, &curr_str_idx, &i, is_long, args);
                 is_long = false;
             } else {
-                _parse_inner_string(f_str, buffer, &curr_str_idx, &i, is_long, args);
+                _parse_inner_string(f_str, buf, &curr_str_idx, &i, is_long, args);
             }
         }
         i++;
