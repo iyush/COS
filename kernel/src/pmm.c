@@ -211,7 +211,7 @@ PmmAllocator pmm_init(struct limine_memmap_request memmap_req, struct limine_hhd
             // offset as we don't want the bitmap itself to be usable
             if (base == biggest_usable_base)
             {
-                bmp_set_free(&allocator, frame_create(base + allocator.bmp_size), (length - allocator.bmp_size) / FRAME_SIZE);
+                bmp_set_free(&allocator, frame_create(base + allocator.bmp_size * sizeof(u64)), (length - allocator.bmp_size * sizeof(u64)) / FRAME_SIZE);
             }
             else
             {

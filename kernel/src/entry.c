@@ -9,7 +9,6 @@
 #include "stdint.h"
 #include "bochs.h"
 #include "asa_limine.h"
-#include "gdt.h"
 #include "cpu.h"
 
 
@@ -35,6 +34,10 @@ extern u8 _KERNEL_TXT_END;
 static u8 kernel_stack[KERNEL_STACK_SIZE] __attribute__((aligned(8)));
 static u64 kernel_stack_ptr = (u64) &kernel_stack + KERNEL_STACK_SIZE;
 
+#define INTERRUPT_STACK_SIZE 16384
+static u8 interrupt_stack[INTERRUPT_STACK_SIZE] __attribute__((aligned(8)));
+static u64 interrupt_stack_ptr = (u64) &interrupt_stack + INTERRUPT_STACK_SIZE;
+
 
 // The following will be our kernel's entry point.
 // If renaming _start() to something else, make sure to change the
@@ -45,7 +48,7 @@ void _start(void)
     // Ensure the bootloader actually understands our base revision (see spec).
     context_init();
 
-    gdt_init(kernel_stack_ptr);
+    gdt_init(kernel_stack_ptr, interrupt_stack_ptr);
     init_idt();
     bochs_breakpoint();
 
@@ -100,7 +103,7 @@ void _start(void)
     scheduler_init();
 
     // TODO: 450+ causes general protection fault here somehow.
-    for (int i = 0; i < 1; i++) { 
+    for (int i = 0; i < 200; i++) { 
         u64 argc = 3;
         char* argv[] = {"hello-world", "hello darkness", "15"};
         Task task = task_init(&pmm_allocator, (PageTableEntry*) current_page_table_address, program_elf, argc, argv);

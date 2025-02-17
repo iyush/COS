@@ -21,7 +21,7 @@ extern u64 _KERNEL_START;
 #define MAX_REGION_LIST_TASK 10
 
 #define STACK_BEGIN_ADDRESS 0x7ff000000000UL
-#define STACK_SIZE 0x100000 // 1Mib;
+#define STACK_SIZE (1 * 1024 * 1024) // 1Mib;
 
 Task task_init(PmmAllocator* pmm_allocator, PageTableEntry* current_page_table_address, Elf64 program_elf, u64 argc, char** argv) {
     PageTableEntry* page_table_address = (PageTableEntry*) to_higher_half(page_table_alloc_frame(pmm_allocator));
@@ -90,7 +90,6 @@ Task task_init(PmmAllocator* pmm_allocator, PageTableEntry* current_page_table_a
     Region stack_region = region_create(STACK_BEGIN_ADDRESS, STACK_SIZE);
     // regionlist_append(&region_list, stack_region);
     region_map(pmm_allocator, stack_region, page_table_address, stack_frame, FRAME_PRESENT | FRAME_WRITABLE | FRAME_USER);
-    // page_table_active_walk_and_print(stack_region.start, (u64) page_table_address);
 
 
     u64* stack_pos = (u64*)(stack_region.start + stack_region.size);
@@ -122,12 +121,10 @@ Task task_init(PmmAllocator* pmm_allocator, PageTableEntry* current_page_table_a
         region_map(pmm_allocator, stack_region, current_page_table_address, stack_frame, FRAME_PRESENT | FRAME_WRITABLE); // for pushing the argv pointers to stack.
 
         // first lets empty the stack
-        /*
-           u8* it = (u8*) stack_region.start;
-           for (u64 i = 0; i < stack_region.size; i++) {
-           it[i] = 0;
-           }
-           */
+        u8* it = (u8*) stack_region.start;
+        for (u64 i = 0; i < stack_region.size; i++) {
+            it[i] = 0;
+        }
 
 
         char* current_address = (char*)argv_region.start;
