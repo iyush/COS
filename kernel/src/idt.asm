@@ -81,6 +81,10 @@ INTERRUPT_WRAPPER 33 ; keyboard
 global int_wrapper_99
 int_wrapper_99:
   ;; this should be in opposite order of struct regs
+	swapgs
+	mov qword [gs:0016], rsp
+	mov rsp, qword [gs:0008]
+
   push 99
   pushfq
   push r15
@@ -124,6 +128,8 @@ int_wrapper_99:
 
   ;; clean up the stack due to the interrupt number
   add rsp, 8
+
+	mov rsp, qword [gs:0016]
 
   o64 sysret
 

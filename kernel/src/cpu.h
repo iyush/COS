@@ -5,15 +5,39 @@
 #define CPU_IA32_LSTAR 0xC0000082
 #define CPU_IA32_FSTAR 0xC0000084
 
-u32 cpuid() {
-    u32 cpuid;
+#define CPU_IA32_USER_GS_BASE 0xC0000101
+#define CPU_IA32_KERNEL_GS_BASE 0xC0000102
+
+
+typedef struct CpuId {
+    u32 eax;
+    u32 ebx;
+    u32 ecx;
+    u32 edx;
+} CpuId;
+
+CpuId cpuid(u32 in_eax) {
+    u32 eax;
+    u32 ebx;
+    u32 ecx;
+    u32 edx;
     asm __volatile__ (
-            "mov $0x80000001, %%eax\n"
-            "cpuid\n"
-            "mov %%edx, %0;"
-            :"=r"(cpuid)
+            "mov %4, %%eax;"
+            "cpuid;"
+            "mov %%eax, %0;"
+            "mov %%ebx, %1;"
+            "mov %%ecx, %2;"
+            "mov %%edx, %3;"
+            :"=a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx)
+            :"r"(in_eax)
+            :
             );
-    return cpuid;
+    return (CpuId) {
+        .eax = eax,
+        .ebx = ebx,
+        .ecx = ecx,
+        .edx = edx,
+    };
 }
 
 void wrmsr(u32 msr, u64 value) {

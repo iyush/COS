@@ -128,7 +128,6 @@ Task task_init(PmmAllocator* pmm_allocator, PageTableEntry* current_page_table_a
 
 
         char* current_address = (char*)argv_region.start;
-        bochs_breakpoint();
         for (s64 i = (s64)argc - 1; i >= 0; i--) { // We assume that argc > 0.
             int len = strlen(argv[i]);
             ASSERT(len > 0);
@@ -164,11 +163,12 @@ void task_set_page_table_and_jump(Task task) {
                                             //
         // now are setting up the iretq for usermode executable
         "\n mov %%rsp, %%rax"               // save the current stack ptr
-        "\n pushq $0x40 | 3"                // stack segment (ss)
+        "\n pushq $0x38 | 3"                // stack segment (ss)
         "\n pushq %%rax"                    // rsp (this is the stack address that we saved earlier)
         "\n pushq $0x202"                   // rflags
-        "\n pushq $0x38 | 3"                // code segment (cs)
+        "\n pushq $0x40 | 3"                // code segment (cs)
         "\n pushq %2"                       // jump destination
+        "\n swapgs"
         "\n iretq"
         :
         : "r"(page_table_frame), "r"(task.stack_address), "r"(task.entry_address)

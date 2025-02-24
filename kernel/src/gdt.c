@@ -187,10 +187,12 @@ gdt[0x0008]=Code segment, base=0x00000000, limit=0x0000ffff, Execute/Read, Non-C
 gdt[0x0010]=Data segment, base=0x00000000, limit=0x0000ffff, Read/Write, Accessed
 gdt[0x0018]=Code segment, base=0x00000000, limit=0xffffffff, Execute/Read, Non-Conforming, Accessed, 32-bit
 gdt[0x0020]=Data segment, base=0x00000000, limit=0xffffffff, Read/Write, Accessed
+
 gdt[0x0028]=Code segment, base=0x00000000, limit=0x00000000, Execute/Read, Non-Conforming, Accessed, 64-bit
 gdt[0x0030]=Data segment, base=0x00000000, limit=0x00000000, Read/Write, Accessed
-gdt[0x0038]=Code segment, base=0x00000000, limit=0x00000000, Execute/Read, Non-Conforming, 64-bit
-gdt[0x0040]=Data segment, base=0x00000000, limit=0x00000000, Read/Write
+
+gdt[0x0038]=Data segment, base=0x00000000, limit=0x00000000, Read/Write -- USER
+gdt[0x0040]=Code segment, base=0x00000000, limit=0x00000000, Execute/Read, Non-Conforming, 64-bit -- USER
 
 
 why do this when limine already does this for us? 
@@ -228,19 +230,20 @@ void gdt_init(u64 kernel_stack_ptr_address, u64 interrupt_stack_ptr) {
         GDT_PL_0,
         GDT_LIMIT_GRANULARITY_BYTE);
 
-    // User Code segment
+    // User Data segment
     gdt_set_gate(7, 0, 0,
+        GDT_SEGMENT_TYPE_DATA_READ_WRITE,
+        GDT_DESCRIPTOR_TYPE_CODE_OR_DATA,
+        GDT_PL_3,
+        GDT_LIMIT_GRANULARITY_BYTE);
+
+    // User Code segment
+    gdt_set_gate(8, 0, 0,
         GDT_SEGMENT_TYPE_CODE_EXECUTE_READ,
         GDT_DESCRIPTOR_TYPE_CODE_OR_DATA,
         GDT_PL_3,
         GDT_LIMIT_GRANULARITY_BYTE);
 
-    // User Data segment
-    gdt_set_gate(8, 0, 0,
-        GDT_SEGMENT_TYPE_DATA_READ_WRITE,
-        GDT_DESCRIPTOR_TYPE_CODE_OR_DATA,
-        GDT_PL_3,
-        GDT_LIMIT_GRANULARITY_BYTE);
 
     // TSS segment
     gdt_set_tss(0, (u64)&tss, 0x67, GDT_SEGMENT_TYPE_TSS_64_BIT_AVAILABLE, GDT_LIMIT_GRANULARITY_BYTE);

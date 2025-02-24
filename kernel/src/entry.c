@@ -26,7 +26,6 @@
 #include "scheduler.c"
 
 
-
 extern u8 _KERNEL_TXT_START;
 extern u8 _KERNEL_TXT_END;
 
@@ -39,18 +38,26 @@ static u8 interrupt_stack[INTERRUPT_STACK_SIZE] __attribute__((aligned(8)));
 static u64 interrupt_stack_ptr = (u64) &interrupt_stack + INTERRUPT_STACK_SIZE;
 
 
+typedef struct ProcessorContext {
+    u64 user_stack_ptr;
+    u64 kernel_stack_ptr;
+} ProcessorContext;
+
+
+ProcessorContext context = {0};
+
 // The following will be our kernel's entry point.
 // If renaming _start() to something else, make sure to change the
 // linker script accordingly.
 void _start(void)
 {
     __asm__ volatile ("mov %0, %%rsp" : : "a" (kernel_stack_ptr));
+    context.kernel_stack_ptr = kernel_stack_ptr;
     // Ensure the bootloader actually understands our base revision (see spec).
     context_init();
 
     gdt_init(kernel_stack_ptr, interrupt_stack_ptr);
     init_idt();
-    bochs_breakpoint();
 
     // Fetch the first framebuffer.
     struct limine_framebuffer *framebuffer = ctx_get_framebuffer();
@@ -93,7 +100,10 @@ void _start(void)
     wrmsr(CPU_IA32_EFER, rdmsr(CPU_IA32_EFER) | (1UL << 0)); // we are enabling fast syscall in the processor.
     wrmsr(CPU_IA32_FSTAR, 0x43700); // Clear IF,TF,AC, and DF
     wrmsr(CPU_IA32_LSTAR, (u64) &int_wrapper_99);    // this is syscall entry function, currently hang function
-    wrmsr(CPU_IA32_STAR, rdmsr(CPU_IA32_STAR) | (0x28UL << 32) | (0x38UL << 48)); // this is our CS for kernel.
+    wrmsr(CPU_IA32_STAR, 0x0030002800000000);
+                                                                                  //
+    wrmsr(CPU_IA32_KERNEL_GS_BASE, (u64) &context);
+    wrmsr(CPU_IA32_USER_GS_BASE, (u64) &context);
 
     u64 current_page_table_address = to_higher_half(vmm_cr3());
 
