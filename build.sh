@@ -15,8 +15,9 @@ x86_64-elf-gcc \
         -mno-red-zone -I lib/ -I kernel/src -I limine/  -MMD -MP -c kernel/src/entry.c -o build/entry.c.o
 
 nasm -F dwarf -g -f elf64 kernel/src/idt.asm -o build/idt.asm.o
+nasm -F dwarf -g -f elf64 kernel/src/syscall.asm -o build/syscall.asm.o
 
-x86_64-elf-ld build/entry.c.o build/idt.asm.o  -m elf_x86_64 -nostdlib -pie -z text -z max-page-size=0x1000 -T kernel/linker.ld -o build/kernel
+x86_64-elf-ld build/entry.c.o build/idt.asm.o build/syscall.asm.o -m elf_x86_64 -nostdlib -pie -z text -z max-page-size=0x1000 -T kernel/linker.ld -o build/kernel
 printf '\x03' | dd of=build/kernel bs=1 count=1 seek=16 conv=notrunc 2> /dev/null
 
 rm -rf iso_root

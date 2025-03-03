@@ -60,6 +60,46 @@ void scheduler_idle_loop() {
 }
 
 
+void scheduler_preempt_and_schedule(RegsWithoutError* r) {
+    if (running_task_id == 0 ) return;
+    Task* current_task = 0;
+    u64 found_idx = 0;
+    for (u64 i = 0; i < tasks.len; i++) {
+        Task* task = task_get(tasks, i);
+        if (task->id == running_task_id) {
+            current_task = task;
+            found_idx = i;
+            break;
+        }
+    }
+    ASSERT(current_task);
+
+    current_task->state = TASK_PAUSED;
+    memcpy(&current_task->regs, r, sizeof(RegsWithoutError));
+
+    Task* next_task = 0;
+    for (u64 i = 0; i < tasks.len; i++) {
+        Task* task = task_get(tasks, i);
+        if (i != found_idx && (task->state == TASK_QUEUED || task->state == TASK_PAUSED)) {
+            next_task = task;
+            break;
+        }
+    }
+    if (next_task) {
+        memcpy(r, &next_task->regs, sizeof(RegsWithoutError));
+        next_task->state = TASK_RUNNING;
+
+        u64 page_table_frame = to_lower_half((u64)next_task->page_table_address).ptr;
+        running_task_id = next_task->id;
+        asm volatile ("mov %0, %%cr3": : "r"(page_table_frame));
+        ksp("We are switching from %ld ---> %ld\n", current_task->id, next_task->id);
+    } else {
+        TODO("we ran out of tasks!, do something!\n");
+    }
+}
+
+
+
 void scheduler_cleanup_task() {
     Task* current_task;
     for (u64 i = 0; i < tasks.len; i++) {

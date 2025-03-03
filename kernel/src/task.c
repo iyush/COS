@@ -3,15 +3,17 @@ typedef enum TaskState{
     TASK_QUEUED = 0,
     TASK_RUNNING = 1,
     TASK_FINISHED = 2,
+    TASK_PAUSED = 3,
 } TaskState;
 
 
 typedef struct Task {
-    u64 id;
+    u64 id; // set by scheduler
     PageTableEntry* page_table_address;
     u64 stack_address;
     u64 entry_address;
-    TaskState state;
+    TaskState state; // set by scheduler
+    RegsWithoutError regs;
 } Task;
 
 extern u64 _KERNEL_END;
@@ -150,6 +152,13 @@ Task task_init(PmmAllocator* pmm_allocator, PageTableEntry* current_page_table_a
         .stack_address = (u64)stack_pos,
         .page_table_address = page_table_address,
         .entry_address = program_elf.header.e_entry,
+        .regs = (RegsWithoutError) {
+            .rsp = (s64)stack_pos,
+            .rip = (s64)program_elf.header.e_entry,
+            .ss = 0x38 | 3,
+            .cs = 0x40 | 3,
+            .rflags = 0x202,
+        }
     };
 
     return task;

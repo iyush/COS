@@ -22,6 +22,7 @@
 #include "vmm.c"
 #include "elf.c"
 #include "gdt.c"
+#include "syscall.c"
 #include "task.c"
 #include "scheduler.c"
 
@@ -72,25 +73,6 @@ void _start(void)
     PmmAllocator pmm_allocator = pmm_init(MEMMAP_REQUEST, HHDM_REQUEST, KERNEL_ADDRESS_REQUEST);
     (void)pmm_allocator;
 
-
-    /*
-    for (;;) {
-        Frame frame = pmm_alloc_frame(&pmm_allocator, 1);
-        // ksp("0x%lb ", allocator.bmp[0]);
-        // ksp("0x%lb ", allocator.bmp[1]);
-        // ksp("0x%lb [%d]\n", allocator.bmp[2], i);
-        ASSERT(frame.ptr);
-    }
-
-    for (int i = 0; i < 192; i++) {
-        Frame frame = frame_create(i << 12);
-        pmm_dealloc_frame(&allocator, frame, 1);
-        // ksp("0x%lb ", allocator.bmp[0]);
-        // ksp("0x%lb ", allocator.bmp[1]);
-        // ksp("0x%lb [%d]\n", allocator.bmp[2], i);
-    }
-    */
-
     // for syscalls:
     // IF (CS.L ≠ 1 ) or (IA32_EFER.LMA ≠ 1) or (IA32_EFER.SCE ≠ 1)
     // Things we need to add to the MSR:
@@ -99,9 +81,9 @@ void _start(void)
     // 
     wrmsr(CPU_IA32_EFER, rdmsr(CPU_IA32_EFER) | (1UL << 0)); // we are enabling fast syscall in the processor.
     wrmsr(CPU_IA32_FSTAR, 0x43700); // Clear IF,TF,AC, and DF
-    wrmsr(CPU_IA32_LSTAR, (u64) &int_wrapper_99);    // this is syscall entry function, currently hang function
+    wrmsr(CPU_IA32_LSTAR, (u64) &syscall_handler_wrapper);    // this is syscall entry function, currently hang function
     wrmsr(CPU_IA32_STAR, 0x0030002800000000);
-                                                                                  //
+
     wrmsr(CPU_IA32_KERNEL_GS_BASE, (u64) &context);
     wrmsr(CPU_IA32_USER_GS_BASE, (u64) &context);
 
@@ -112,10 +94,9 @@ void _start(void)
 
     scheduler_init();
 
-    // TODO: 450+ causes general protection fault here somehow.
-    for (int i = 0; i < 200; i++) { 
+    for (int i = 0; i < 100; i++) { 
         u64 argc = 3;
-        char* argv[] = {"hello-world", "hello darkness", "15"};
+        char* argv[] = {"hello-world", "hello darkness", "1000"};
         Task task = task_init(&pmm_allocator, (PageTableEntry*) current_page_table_address, program_elf, argc, argv);
         scheduler_queue_task(task);
     }

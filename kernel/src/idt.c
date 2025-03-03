@@ -3,30 +3,6 @@
 #include "./pic.c"
 #include "scheduler.h"
 
-struct __attribute__((packed)) regs {
-   s64 rax;
-   s64 rbx;
-   s64 rcx;
-   s64 rdx;
-   s64 rbp;
-   s64 rsi;
-   s64 rdi;
-   s64 rsp;
-   s64 r8;
-   s64 r9;
-   s64 r10;
-   s64 r11;
-   s64 r12;
-   s64 r13;
-   s64 r14;
-   s64 r15;
-
-   s64 rflags;
-   s64 interrupt_number;
-   s64 error_code;
-   s64 rip;
-};
-
 
 typedef struct {
    u16 offset_1;        // offset bits 0..15
@@ -44,26 +20,31 @@ typedef struct {
 } __attribute__((packed)) idtr_t;
 
 
-void dmpregs(struct regs r) {
-   ksp("rax     0x%lx\n", r.rax);
-   ksp("rbx     0x%lx\n", r.rbx);
-   ksp("rcx     0x%lx\n", r.rcx);
-   ksp("rdx     0x%lx\n", r.rdx);
-   ksp("rbp     0x%lx\n", r.rbp);
-   ksp("rsi     0x%lx\n", r.rsi);
-   ksp("rdi     0x%lx\n", r.rdi);
-   ksp("rsp     0x%lx\n", r.rsp);
-   ksp("r8      0x%lx\n", r.r8);
-   ksp("r9      0x%lx\n", r.r9);
-   ksp("r10     0x%lx\n", r.r10);
-   ksp("r11     0x%lx\n", r.r11);
-   ksp("r12     0x%lx\n", r.r12);
-   ksp("r13     0x%lx\n", r.r13);
-   ksp("r14     0x%lx\n", r.r14);
-   ksp("r15     0x%lx\n", r.r15);
-   ksp("rflags  0x%lx\n", r.rflags);
+void dmpregs(RegsWithError r) {
+   ksp("---- Registers -----\n");
+   ksp("RAX         0x%lx\n", r.rax);
+   ksp("RBX         0x%lx\n", r.rbx);
+   ksp("RCX         0x%lx\n", r.rcx);
+   ksp("RDX         0x%lx\n", r.rdx);
+   ksp("RBP         0x%lx\n", r.rbp);
+   ksp("RSI         0x%lx\n", r.rsi);
+   ksp("RDI         0x%lx\n", r.rdi);
+   ksp("RSP         0x%lx\n", r.rsp);
+   ksp("R8          0x%lx\n", r.r8);
+   ksp("R9          0x%lx\n", r.r9);
+   ksp("R10         0x%lx\n", r.r10);
+   ksp("R11         0x%lx\n", r.r11);
+   ksp("R12         0x%lx\n", r.r12);
+   ksp("R13         0x%lx\n", r.r13);
+   ksp("R14         0x%lx\n", r.r14);
+   ksp("R15         0x%lx\n", r.r15);
+   ksp("RFLAGS      0x%lx\n", r.rflags);
    ksp("error_code  0x%lx\n", r.error_code);
-   ksp("rip  0x%lx\n", r.rip);
+   ksp("RIP         0x%lx\n", r.rip);
+   ksp("CS          0x%lx\n", r.cs);
+   ksp("RSP         0x%lx\n", r.rsp);
+   ksp("SS          0x%lx\n", r.ss);
+   ksp("--------------------\n");
 }
 
 static idt_entry_64_t idt[256];
@@ -79,18 +60,19 @@ struct interrupt_frame
     u64 ss;
 };
 
-void timer(struct regs* r) {
-   (void)r;
+void timer(RegsWithoutError* r) {
+   scheduler_preempt_and_schedule(r);
+   // (void)r;
    pic_send_end_of_interrupt();
 } // 21
 
-void all_interrupts_handler(struct regs* r)
+void all_interrupts_handler(void * r, s32 interrupt_number)
 {
-   switch (r->interrupt_number) {
+   switch (interrupt_number) {
       case 13:
       {
          ksp("We got a General Protection Fault!\n");
-         dmpregs(*r);
+         dmpregs(*((RegsWithError*) r));
          while(1) {}
       } break;
       case 14:
@@ -99,39 +81,18 @@ void all_interrupts_handler(struct regs* r)
          u64 cr2 = 0;
          asm volatile("mov %%cr2, %0" : "=r" (cr2));
          ksp("Page fault happend at address: 0x%lx\n", cr2);
-         dmpregs(*r);
+         dmpregs(*(RegsWithError*) r);
          while(1){ }
       } break;
       case 32:
-         // ksp("Timer timer!\n");
-         timer(r);
+         timer((RegsWithoutError*) r);
          break;
       case 33:
          //TODO: keyboard
          break;
-      case 99: {
-                  switch(r->rax) {
-                     case 0: 
-                        {
-                           // cleanup();
-                           scheduler_cleanup_task();
-                        }
-                        break;
-                     case 1:
-                        {
-                           s32 size = (s32) r->rsi;
-                           ASSERT(size == r->rsi); // We make sure that we do not pass 64 bit number in the argument. output to console only supports 32 bit.
-                           output_to_console((char*)r->rdi, size);
-                        }
-                        break;
-                  };
-               }
-         break;
-         
-
       default:
-         ksp("we received an generic interrupt %ld\n", r->interrupt_number);
-         dmpregs(*r);
+         ksp("we received an generic interrupt %d\n", interrupt_number);
+         dmpregs(*(RegsWithError*) r);
          while(1) {}
    };
 }
@@ -164,8 +125,6 @@ extern __attribute__((interrupt)) void int_wrapper_32(struct interrupt_frame*, u
 extern __attribute__((interrupt)) void int_wrapper_33(struct interrupt_frame*, u64);
 
 
-// syscall
-extern __attribute__((interrupt)) void int_wrapper_99(struct interrupt_frame*, u64);
 
 
 void idt_set_handler(int interrupt_vector, void (*handler_fn)(), u8 type_attribute, u8 ist) {
@@ -187,27 +146,28 @@ void init_idt(void) {
    idtr.limit = (u16)sizeof(idt_entry_64_t) * 256;
    idtr.base = (u64)&idt[0];
 
-   idt_set_handler(0,  int_wrapper_0,  0x8E, 0);
-   idt_set_handler(1,  int_wrapper_1,  0x8E, 0);
-   idt_set_handler(2,  int_wrapper_2,  0x8E, 0);
-   idt_set_handler(3,  int_wrapper_3,  0x8E, 0);
-   idt_set_handler(4,  int_wrapper_4,  0x8E, 0);
-   idt_set_handler(5,  int_wrapper_5,  0x8E, 0);
-   idt_set_handler(6,  int_wrapper_6,  0x8E, 0);
-   idt_set_handler(7,  int_wrapper_7,  0x8E, 0);
-   idt_set_handler(8,  int_wrapper_8,  0x8F, 0); //
-   idt_set_handler(9,  int_wrapper_9,  0x8E, 0);
-   idt_set_handler(10, int_wrapper_10, 0x8F, 0); //
-   idt_set_handler(11, int_wrapper_11, 0x8F, 0); //
-   idt_set_handler(12, int_wrapper_12, 0x8F, 0); //
-   idt_set_handler(13, int_wrapper_13, 0x8F, 0); //
-   idt_set_handler(14, int_wrapper_14, 0x8F, 0); //
-   idt_set_handler(16, int_wrapper_16, 0x8E, 0);
-   idt_set_handler(17, int_wrapper_17, 0x8F, 0); //
-   idt_set_handler(18, int_wrapper_18, 0x8E, 0);
-   idt_set_handler(19, int_wrapper_19, 0x8E, 0);
-   idt_set_handler(20, int_wrapper_20, 0x8E, 0);
-   idt_set_handler(21, int_wrapper_21, 0x8E, 0);
+
+   idt_set_handler(0,  int_wrapper_0,  0x8E, 1);
+   idt_set_handler(1,  int_wrapper_1,  0x8E, 1);
+   idt_set_handler(2,  int_wrapper_2,  0x8E, 1);
+   idt_set_handler(3,  int_wrapper_3,  0x8E, 1);
+   idt_set_handler(4,  int_wrapper_4,  0x8E, 1);
+   idt_set_handler(5,  int_wrapper_5,  0x8E, 1);
+   idt_set_handler(6,  int_wrapper_6,  0x8E, 1);
+   idt_set_handler(7,  int_wrapper_7,  0x8E, 1);
+   idt_set_handler(8,  int_wrapper_8,  0x8F, 1); //
+   idt_set_handler(9,  int_wrapper_9,  0x8E, 1);
+   idt_set_handler(10, int_wrapper_10, 0x8F, 1); //
+   idt_set_handler(11, int_wrapper_11, 0x8F, 1); //
+   idt_set_handler(12, int_wrapper_12, 0x8F, 1); //
+   idt_set_handler(13, int_wrapper_13, 0x8F, 1); //
+   idt_set_handler(14, int_wrapper_14, 0x8F, 1); //
+   idt_set_handler(16, int_wrapper_16, 0x8E, 1);
+   idt_set_handler(17, int_wrapper_17, 0x8F, 1); //
+   idt_set_handler(18, int_wrapper_18, 0x8E, 1);
+   idt_set_handler(19, int_wrapper_19, 0x8E, 1);
+   idt_set_handler(20, int_wrapper_20, 0x8E, 1);
+   idt_set_handler(21, int_wrapper_21, 0x8E, 1);
 
    __asm__ volatile("lidt %0" :: "m"(idtr));          // load the new IDT
 
@@ -234,10 +194,10 @@ void init_pic(void) {
    pic_remap(0x20, 0x28);
 
    // setup hardware interrupt handlers
-   idt_set_handler(0x20, int_wrapper_32, 0x8E, 1);
-   idt_set_handler(0x21, int_wrapper_33, 0x8E, 0);
+   idt_set_handler(0x20, int_wrapper_32, 0x8E, 0);
+   idt_set_handler(0x21, int_wrapper_33, 0x8E, 1);
    for (int vector = 0x22; vector < 0x29; vector++) {
-      idt_set_handler(vector, all_interrupts_handler, 0x8E, 0);
+      idt_set_handler(vector, all_interrupts_handler, 0x8E, 1);
    }
 
    // disable/mask all the hardware interrupts right now.
