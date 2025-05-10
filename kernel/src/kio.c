@@ -4,7 +4,6 @@
 #include "./kstring.h"
 #include "stdint.h"
 #include <stdbool.h>
-#include "./io.h"
 
 #define BUF_MAX 256
 #define VGA_HEIGHT 25

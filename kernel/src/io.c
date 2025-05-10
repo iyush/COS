@@ -1,5 +1,4 @@
 // Reference: https://wiki.osdev.org/Inline_Assembly/Examples#I.2FO_access
-#include "./io.h"
 
 void outb(u16 port, s8 val) {
    asm volatile("outb %0, %1" :: "a"(val), "Nd"(port): "memory");
