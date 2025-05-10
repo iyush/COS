@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-set -e
+set -ex
 
 rm -rf build/
 mkdir -p build/
