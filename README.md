@@ -19,7 +19,10 @@ The OS does not currently have (but will at some point in the future):
 
 ## Building
 
-Make sure you have [nix](https://nixos.org/) installed. Make sure that you have pulled this repo recursively.
+Make sure you have [nix](https://nixos.org/) installed. Make sure that you have pulled this repo recursively to pull limine. The current limine version supported is:
+```
+HEAD detached at origin/v7.x-binary
+```
 
 1. Pop into nix-shell
    ```
