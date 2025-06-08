@@ -152,23 +152,47 @@ void framebuffer_context_init(FramebufferContext *fctx) {
 
 static void framebuffer_log_render(FramebufferContext *fctx) {
     for (int r = 0; r < fctx->rows; r++) {
-        draw_string(fctx->fb_ptr, fctx->fb_width, 0, r*fctx->char_height, fctx->char_grid_ptrs[r], FONT_COLOR_WHITE);
+        // Clear the row area before drawing the string to avoid glyph overlap
+        int y = r * fctx->char_height;
+        for (int row = 0; row < fctx->char_height; row++) {
+            for (int col = 0; col < fctx->fb_width; col++) {
+                fctx->fb_ptr[(y + row) * fctx->fb_width + col] = 0x000000; // black
+            }
+        }
+        draw_string(fctx->fb_ptr, fctx->fb_width, 0, y, fctx->char_grid_ptrs[r], FONT_COLOR_WHITE);
     }
+}
+
+static void framebuffer_scroll_up(FramebufferContext *fctx) {
+    for (int r = 1; r < fctx->rows; r++) {
+        for (int c = 0; c < fctx->cols; c++) {
+            fctx->char_grid[r-1][c] = fctx->char_grid[r][c];
+        }
+        fctx->char_grid[r-1][fctx->cols] = '\0';
+    }
+    for (int c = 0; c < fctx->cols; c++) {
+        fctx->char_grid[fctx->rows-1][c] = ' ';
+    }
+    fctx->char_grid[fctx->rows-1][fctx->cols] = '\0';
+    fctx->cursor_row = fctx->rows - 1;
 }
 
 static void framebuffer_log_putc(FramebufferContext *fctx, char c) {
     if (c == '\n') {
         fctx->cursor_col = 0;
         fctx->cursor_row++;
+        if (fctx->cursor_row >= fctx->rows) {
+            framebuffer_scroll_up(fctx);
+        }
         return;
     }
     if (c == '\r') return;
     if (fctx->cursor_col >= fctx->cols) {
         fctx->cursor_col = 0;
         fctx->cursor_row++;
-    }
-    if (fctx->cursor_row >= fctx->rows) {
-        fctx->cursor_row = 0; // wrap around or scroll as needed
+        if (fctx->cursor_row >= fctx->rows) {
+            framebuffer_scroll_up(fctx);
+        }
     }
     fctx->char_grid[fctx->cursor_row][fctx->cursor_col] = c;
     fctx->cursor_col++;
