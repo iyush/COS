@@ -25,6 +25,7 @@
 #include "syscall.c"
 #include "task.c"
 #include "scheduler.c"
+#include "font.c"
 
 
 extern u8 _KERNEL_TXT_START;
@@ -63,12 +64,14 @@ void _start(void)
     // Fetch the first framebuffer.
     struct limine_framebuffer *framebuffer = ctx_get_framebuffer();
     volatile u32 *fb_ptr = framebuffer->address;
+    int fb_width = (int)framebuffer->width;
 
-    // Note: we assume the framebuffer model is RGB with 32-bit pixels.
-    for (size_t i = 0; i < 100; i++)
-    {
-        fb_ptr[i * (framebuffer->pitch / 4) + i] = 0xffffff;
-    }
+    // Demo: draw text using the bitmap font
+    draw_string((unsigned int*)fb_ptr, fb_width, 20, 20, "Hello, kernel!", FONT_COLOR_GREEN);
+    draw_string((unsigned int*)fb_ptr, fb_width, 20, 40, "Font rendering demo", FONT_COLOR_RED);
+    draw_string((unsigned int*)fb_ptr, fb_width, 20, 60, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", FONT_COLOR_BLUE);
+    draw_string((unsigned int*)fb_ptr, fb_width, 20, 80, "0123456789 !?", FONT_COLOR_YELLOW);
+    draw_string((unsigned int*)fb_ptr, fb_width, 20, 100, "Newline\ntest!", FONT_COLOR_WHITE);
 
     PmmAllocator pmm_allocator = pmm_init(MEMMAP_REQUEST, HHDM_REQUEST, KERNEL_ADDRESS_REQUEST);
     (void)pmm_allocator;
