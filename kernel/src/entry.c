@@ -27,6 +27,8 @@
 #include "scheduler.c"
 #include "font.h"
 #include "font.c"
+#include "keyboard.h"
+#include "keyboard.c"
 
 
 extern u8 _KERNEL_TXT_START;
@@ -96,19 +98,19 @@ void _start(void)
     wrmsr(CPU_IA32_KERNEL_GS_BASE, (u64) &context);
     wrmsr(CPU_IA32_USER_GS_BASE, (u64) &context);
 
-    u64 current_page_table_address = to_higher_half(vmm_cr3());
+    // u64 current_page_table_address = to_higher_half(vmm_cr3());
 
-    struct limine_file ** modules = ctx_get_modules();
-    Elf64 program_elf = elf_parse(modules[0]->address, modules[0]->size);
+    // struct limine_file ** modules = ctx_get_modules();
+    // Elf64 program_elf = elf_parse(modules[0]->address, modules[0]->size);
 
     scheduler_init();
 
-    for (int i = 0; i < 100; i++) { 
-        u64 argc = 3;
-        char* argv[] = {"hello-world", "hello darkness", "1000"};
-        Task task = task_init(&pmm_allocator, (PageTableEntry*) current_page_table_address, program_elf, argc, argv);
-        scheduler_queue_task(task);
-    }
+    // for (int i = 0; i < 100; i++) { 
+    //     u64 argc = 3;
+    //     char* argv[] = {"hello-world", "hello darkness", "1000"};
+    //     Task task = task_init(&pmm_allocator, (PageTableEntry*) current_page_table_address, program_elf, argc, argv);
+    //     scheduler_queue_task(task);
+    // }
 
     scheduler_idle_loop();
 

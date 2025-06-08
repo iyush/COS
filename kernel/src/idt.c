@@ -2,6 +2,7 @@
 #include "./kio.h"
 #include "./pic.c"
 #include "scheduler.h"
+#include "keyboard.h"
 
 
 typedef struct {
@@ -88,7 +89,7 @@ void all_interrupts_handler(void * r, s32 interrupt_number)
          timer((RegsWithoutError*) r);
          break;
       case 33:
-         //TODO: keyboard
+         keyboard_handle_interrupt();
          break;
       default:
          ksp("we received an generic interrupt %d\n", interrupt_number);
