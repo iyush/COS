@@ -33,7 +33,10 @@ void ksp(char * f_str, ...) {
     int size = kvsprintf(buffer, f_str, args);
 
     output_to_console(buffer, size);
-    framebuffer_log_write(buffer, size);
     va_end(args);
+}
+
+void kprint(const char *str, int size) {
+    framebuffer_log_write(str, size);
 }
 #endif
