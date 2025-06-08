@@ -94,7 +94,7 @@ void scheduler_preempt_and_schedule(RegsWithoutError* r) {
         asm volatile ("mov %0, %%cr3": : "r"(page_table_frame));
         ksp("We are switching from %ld ---> %ld\n", current_task->id, next_task->id);
     } else {
-        TODO("we ran out of tasks!, do something!\n");
+
     }
 }
 

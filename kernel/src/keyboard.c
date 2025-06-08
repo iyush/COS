@@ -14,12 +14,37 @@ static const char scancode_to_ascii[128] = {
     // rest are zeros
 };
 
+// Only define the global variable, not the struct
+KeyboardBuffer g_keyboard_buffer = { .buffer = {0}, .head = 0, .tail = 0 };
+
+int keyboard_buffer_is_empty() {
+    return g_keyboard_buffer.head == g_keyboard_buffer.tail;
+}
+
+int keyboard_buffer_is_full() {
+    return ((g_keyboard_buffer.head + 1) % KEYBOARD_BUFFER_SIZE) == g_keyboard_buffer.tail;
+}
+
+void keyboard_buffer_push(char c) {
+    if (!keyboard_buffer_is_full()) {
+        g_keyboard_buffer.buffer[g_keyboard_buffer.head] = c;
+        g_keyboard_buffer.head = (g_keyboard_buffer.head + 1) % KEYBOARD_BUFFER_SIZE;
+    }
+}
+
+char keyboard_getchar() {
+    if (keyboard_buffer_is_empty()) return 0;
+    char c = g_keyboard_buffer.buffer[g_keyboard_buffer.tail];
+    g_keyboard_buffer.tail = (g_keyboard_buffer.tail + 1) % KEYBOARD_BUFFER_SIZE;
+    return c;
+}
+
 void keyboard_handle_interrupt() {
     s8 scancode = inb((u16)KEYBOARD_DATA_PORT);
     if (scancode > 0) {
         char c = scancode_to_ascii[scancode];
         if (c) {
-            kprint("%c", c);
+            keyboard_buffer_push(c);
         }
     }
     pic_send_end_of_interrupt();

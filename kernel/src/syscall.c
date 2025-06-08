@@ -1,4 +1,4 @@
-
+#include "keyboard.h"
 
 extern __attribute__((interrupt)) void syscall_handler_wrapper(RegsWithoutError *, u64);
 
@@ -17,6 +17,12 @@ void syscall_handler(RegsWithoutError * r) {
                 ASSERT(size == r->rsi); // We make sure that we do not pass 64 bit number in the argument. output to console only supports 32 bit.
                 framebuffer_log_write((char*)r->rdi, size);
                 // output_to_console((char*)r->rdi, size);
+            }
+            break;
+        case 2: // syscall: getchar
+            {
+                char c = keyboard_getchar();
+                r->rax = (u64)c;
             }
             break;
         default:
