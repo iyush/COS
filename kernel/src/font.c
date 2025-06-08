@@ -1,8 +1,7 @@
-// Simple 8x8 bitmap font for ASCII characters 32-127
-// Each character is 8 bytes, each byte is a row (8 pixels wide)
-// Only a few characters are filled for demo, fill more as needed
-// 8x8 font for ASCII 32-127 (space to ~)
-// Sourced from public domain font8x8_basic
+#include "font.h"
+
+// Implementation of font8x8_basic, draw_char, draw_string, framebuffer_log_init, framebuffer_log_write, etc.
+
 static const unsigned char font8x8_basic[96][8] = {
     {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}, // 32  
     {0x18,0x3c,0x3c,0x18,0x18,0x00,0x18,0x00}, // 33  !
@@ -102,19 +101,6 @@ static const unsigned char font8x8_basic[96][8] = {
     {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}  // 127 (DEL)
 };
 
-typedef enum {
-    FONT_COLOR_GREEN   = 0x00ff00,
-    FONT_COLOR_RED     = 0xff0000,
-    FONT_COLOR_BLUE    = 0x0000ff,
-    FONT_COLOR_YELLOW  = 0xffff00,
-    FONT_COLOR_WHITE   = 0xffffff,
-    FONT_COLOR_CYAN    = 0x00ffff,
-    FONT_COLOR_MAGENTA = 0xff00ff,
-    FONT_COLOR_BLACK   = 0x000000,
-    FONT_COLOR_ORANGE  = 0xffa500
-} FontColor;
-
-// Draw a single character at (x, y) in framebuffer with color
 void draw_char(unsigned int* fb, int fb_width, int x, int y, char c, unsigned int color) {
     if ((unsigned char)c < 32 || (unsigned char)c > 127) return;
     const unsigned char* glyph = font8x8_basic[c - 32];
@@ -127,7 +113,6 @@ void draw_char(unsigned int* fb, int fb_width, int x, int y, char c, unsigned in
     }
 }
 
-// Draw a null-terminated string at (x, y)
 void draw_string(unsigned int* fb, int fb_width, int x, int y, const char* s, unsigned int color) {
     int orig_x = x;
     while (*s) {
@@ -141,3 +126,67 @@ void draw_string(unsigned int* fb, int fb_width, int x, int y, const char* s, un
         s++;
     }
 }
+
+
+void framebuffer_context_init(FramebufferContext *fctx) {
+    fctx->fb = ctx_get_framebuffer();
+    fctx->fb_ptr = (unsigned int*)fctx->fb->address;
+    fctx->fb_width = (int)fctx->fb->width;
+    fctx->fb_height = (int)fctx->fb->height;
+    fctx->char_width = FRAMEBUFFER_LOG_CHAR_WIDTH;
+    fctx->char_height = FRAMEBUFFER_LOG_CHAR_HEIGHT;
+    fctx->cols = fctx->fb_width / fctx->char_width;
+    fctx->rows = fctx->fb_height / fctx->char_height;
+    ASSERT(fctx->cols <= MAX_FRAMEBUFFER_COLS);
+    ASSERT(fctx->rows <= MAX_FRAMEBUFFER_ROWS);
+    for (int r = 0; r < fctx->rows; r++) {
+        for (int c = 0; c < fctx->cols; c++) {
+            fctx->char_grid[r][c] = ' ';
+        }
+        fctx->char_grid[r][fctx->cols] = '\0';
+        fctx->char_grid_ptrs[r] = fctx->char_grid[r];
+    }
+    fctx->cursor_row = 0;
+    fctx->cursor_col = 0;
+}
+
+static void framebuffer_log_render(FramebufferContext *fctx) {
+    for (int r = 0; r < fctx->rows; r++) {
+        draw_string(fctx->fb_ptr, fctx->fb_width, 0, r*fctx->char_height, fctx->char_grid_ptrs[r], FONT_COLOR_WHITE);
+    }
+}
+
+static void framebuffer_log_putc(FramebufferContext *fctx, char c) {
+    if (c == '\n') {
+        fctx->cursor_col = 0;
+        fctx->cursor_row++;
+        return;
+    }
+    if (c == '\r') return;
+    if (fctx->cursor_col >= fctx->cols) {
+        fctx->cursor_col = 0;
+        fctx->cursor_row++;
+    }
+    if (fctx->cursor_row >= fctx->rows) {
+        fctx->cursor_row = 0; // wrap around or scroll as needed
+    }
+    fctx->char_grid[fctx->cursor_row][fctx->cursor_col] = c;
+    fctx->cursor_col++;
+}
+
+void framebuffer_log_write_ctx(FramebufferContext *fctx, const char* str, int size) {
+    for (int i = 0; i < size; i++) {
+        framebuffer_log_putc(fctx, str[i]);
+    }
+    framebuffer_log_render(fctx);
+}
+
+// Legacy global log context for compatibility
+static FramebufferContext global_fb_ctx;
+void framebuffer_log_init() {
+    framebuffer_context_init(&global_fb_ctx);
+}
+void framebuffer_log_write(const char* str, int size) {
+    framebuffer_log_write_ctx(&global_fb_ctx, str, size);
+}
+

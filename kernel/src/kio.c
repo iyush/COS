@@ -5,6 +5,7 @@
 #include "stdint.h"
 #include <stdbool.h>
 #include "./io.h"
+#include "font.h"
 
 #define BUF_MAX 256
 #define VGA_HEIGHT 25
@@ -32,6 +33,7 @@ void ksp(char * f_str, ...) {
     int size = kvsprintf(buffer, f_str, args);
 
     output_to_console(buffer, size);
+    framebuffer_log_write(buffer, size);
     va_end(args);
 }
 #endif
