@@ -101,7 +101,7 @@ void scheduler_preempt_and_schedule(RegsWithoutError* r) {
 
 
 void scheduler_cleanup_task() {
-    Task* current_task;
+    Task* current_task = 0;
     for (u64 i = 0; i < tasks.len; i++) {
         Task* task = task_get(tasks, i);
         if (task->id == running_task_id) {
