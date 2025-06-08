@@ -153,16 +153,16 @@ void framebuffer_context_init(FramebufferContext *fctx) {
 
 static void framebuffer_log_render(FramebufferContext *fctx) {
     for (int r = 0; r < fctx->rows; r++) {
-        if (!fctx->dirty_rows[r]) continue;
-        int y = r * fctx->char_height;
-        // Clear only this row
-        for (int row = 0; row < fctx->char_height; row++) {
-            for (int col = 0; col < fctx->fb_width; col++) {
-                fctx->fb_ptr[(y + row) * fctx->fb_width + col] = 0x000000; // black
+        if (fctx->dirty_rows[r]) {
+            int y = r * fctx->char_height;
+            // Clear only this row using memset
+            for (int row = 0; row < fctx->char_height; row++) {
+                void *row_ptr = &fctx->fb_ptr[(y + row) * fctx->fb_width];
+                memset(row_ptr, 0, (size_t)fctx->fb_width * sizeof(unsigned int));
             }
+            draw_string(fctx->fb_ptr, fctx->fb_width, 0, y, fctx->char_grid_ptrs[r], FONT_COLOR_WHITE);
+            fctx->dirty_rows[r] = 0;
         }
-        draw_string(fctx->fb_ptr, fctx->fb_width, 0, y, fctx->char_grid_ptrs[r], FONT_COLOR_WHITE);
-        fctx->dirty_rows[r] = 0;
     }
 }
 
