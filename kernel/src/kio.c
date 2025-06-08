@@ -36,7 +36,14 @@ void ksp(char * f_str, ...) {
     va_end(args);
 }
 
-void kprint(const char *str, int size) {
-    framebuffer_log_write(str, size);
+__attribute__((format(printf, 1, 2)))
+void kprint(char * f_str, ...) {
+    va_list args;
+    va_start(args, f_str);
+
+    int size = kvsprintf(buffer, f_str, args);
+
+    framebuffer_log_write(buffer, size);
+    va_end(args);
 }
 #endif

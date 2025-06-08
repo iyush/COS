@@ -86,13 +86,14 @@ Task task_init(PmmAllocator* pmm_allocator, PageTableEntry* current_page_table_a
     }
 
     // create a stack for the executable
-
     Frame stack_frame = pmm_alloc_frame(pmm_allocator, STACK_SIZE >> 12);
     ASSERT(stack_frame.ptr);
     Region stack_region = region_create(STACK_BEGIN_ADDRESS, STACK_SIZE);
     // regionlist_append(&region_list, stack_region);
     region_map(pmm_allocator, stack_region, page_table_address, stack_frame, FRAME_PRESENT | FRAME_WRITABLE | FRAME_USER);
 
+    Region framebuffer = region_create((u64)ctx_get_framebuffer()->address, ctx_get_framebuffer()->pitch * ctx_get_framebuffer()->height);
+    region_map(pmm_allocator, framebuffer, page_table_address, to_lower_half(framebuffer.start), FRAME_PRESENT | FRAME_WRITABLE | FRAME_USER);
 
     u64* stack_pos = (u64*)(stack_region.start + stack_region.size);
     if (argc > 0) {

@@ -15,7 +15,8 @@ void syscall_handler(RegsWithoutError * r) {
             {
                 s32 size = (s32) r->rsi;
                 ASSERT(size == r->rsi); // We make sure that we do not pass 64 bit number in the argument. output to console only supports 32 bit.
-                output_to_console((char*)r->rdi, size);
+                framebuffer_log_write((char*)r->rdi, size);
+                // output_to_console((char*)r->rdi, size);
             }
             break;
         default:
