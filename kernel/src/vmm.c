@@ -1,6 +1,5 @@
 #include "stdint.h"
 #include <limine.h>
-#include <mem.h>
 #include <assert.h>
 #include <elf.h>
 

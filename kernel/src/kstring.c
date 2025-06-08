@@ -2,7 +2,7 @@
 // no mallocs here.
 // Therefore quite portable
 // Created on: 13.07.23 22:25
-//
+// Goes without saying this is quite shit.
 
 #include <stdarg.h>
 #include <stdbool.h>

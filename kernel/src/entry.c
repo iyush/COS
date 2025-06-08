@@ -5,7 +5,6 @@
 #include <stdbool.h>
 
 #include "./kio.h"
-#include "./io.h"
 #include "stdint.h"
 #include "bochs.h"
 #include "asa_limine.h"

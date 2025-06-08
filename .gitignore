@@ -1,7 +1,6 @@
 build
 toolchain/build
 toolchain/src
-limine
 
 .DS_Store
 *.o
