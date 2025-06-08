@@ -7,10 +7,6 @@ Tiny x86_64 Operating System written in C. The OS can:
 4. Premptively Schedule tasks
 5. Do syscalls
 
-Logging is forwarded to stdout of the host system.
-The goal writing this OS was to bootstrap syscalls and preemptive scheduling in the shortest amount 
-of time and with least lines of code possible. Currently it has 3K lines of code.
-
 The OS does not currently have (but will at some point in the future):
 1. Virtual Memory Manager (It is very simple atm).
 2. Graphics Stack
