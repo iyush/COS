@@ -1,6 +1,5 @@
 #include "keyboard.h"
 #include "kio.h"
-#include "io.h"
 #include "pic.h"
 #include "stdint.h"
 
