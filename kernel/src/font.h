@@ -36,6 +36,7 @@ typedef struct {
     int cursor_col;
     char char_grid[MAX_FRAMEBUFFER_ROWS][MAX_FRAMEBUFFER_COLS+1];
     char *char_grid_ptrs[MAX_FRAMEBUFFER_ROWS];
+    char dirty_rows[MAX_FRAMEBUFFER_ROWS]; // 0 = clean, 1 = dirty
 } FramebufferContext;
 
 void draw_char(unsigned int* fb, int fb_width, int x, int y, char c, unsigned int color);
