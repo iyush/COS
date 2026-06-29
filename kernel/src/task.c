@@ -167,6 +167,7 @@ Task task_init(PmmAllocator* pmm_allocator, PageTableEntry* current_page_table_a
 
 void task_set_page_table_and_jump(Task task) {
     u64 page_table_frame = to_lower_half((u64)task.page_table_address).ptr;
+    bochs_breakpoint();
     __asm__ volatile(
         "\n mov %0, %%cr3"                  // load the page table
         "\n mov %1, %%rsp"                  // change the stack pointer

@@ -7,7 +7,7 @@ in
       crossPkgs.buildPackages.binutils
       crossPkgs.buildPackages.gcc
       crossPkgs.buildPackages.gdb
-      # crossPkgs.buildPackages.bochs
+      crossPkgs.buildPackages.bochs
 
       pkgs.xorriso
       pkgs.qemu
